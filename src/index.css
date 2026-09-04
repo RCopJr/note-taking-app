@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #181825;
+  color: #cdd6f4;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #313244;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #45475a;
+}
+
+/* CodeMirror 6 Base & Live Preview Typography Styling */
+.cm-editor {
+  height: 100%;
+  font-size: 15px;
+  background-color: #181825 !important;
+  color: #cdd6f4 !important;
+}
+
+.cm-editor .cm-scroller {
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', monospace;
+  line-height: 1.6;
+  padding: 1.5rem 0;
+}
+
+.cm-editor .cm-content {
+  padding: 0 2rem;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.cm-editor .cm-gutters {
+  background-color: #181825 !important;
+  color: #585b70 !important;
+  border-right: 1px solid #313244 !important;
+  padding-right: 8px;
+}
+
+.cm-editor .cm-activeLineGutter {
+  background-color: #1e1e2e !important;
+  color: #cdd6f4 !important;
+  font-weight: bold;
+}
+
+.cm-editor .cm-activeLine {
+  background-color: #1e1e2e40 !important;
+}
+
+.cm-editor .cm-cursor {
+  border-left-color: #89b4fa !important;
+  border-left-width: 2px !important;
+}
+
+/* Live Preview Decorator Classes */
+.cm-lp-h1 {
+  font-size: 1.85rem !important;
+  font-weight: 700 !important;
+  color: #89b4fa !important;
+  line-height: 1.3 !important;
+  padding-top: 0.75rem;
+  padding-bottom: 0.25rem;
+}
+
+.cm-lp-h2 {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: #b4befe !important;
+  line-height: 1.35 !important;
+  padding-top: 0.6rem;
+  padding-bottom: 0.2rem;
+}
+
+.cm-lp-h3 {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #cba6f7 !important;
+  line-height: 1.4 !important;
+  padding-top: 0.5rem;
+}
+
+.cm-lp-h4, .cm-lp-h5, .cm-lp-h6 {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: #f5c2e7 !important;
+}
+
+.cm-lp-bold {
+  font-weight: 700 !important;
+  color: #f9e2af !important;
+}
+
+.cm-lp-italic {
+  font-style: italic !important;
+  color: #fab387 !important;
+}
+
+.cm-lp-strikethrough {
+  text-decoration: line-through !important;
+  color: #6c7086 !important;
+}
+
+.cm-lp-inline-code {
+  background-color: #313244 !important;
+  color: #f38ba8 !important;
+  padding: 0.15rem 0.35rem !important;
+  border-radius: 4px !important;
+  font-size: 0.9em !important;
+}
+
+.cm-lp-blockquote {
+  border-left: 3px solid #89b4fa !important;
+  padding-left: 0.85rem !important;
+  color: #a6adc8 !important;
+  font-style: italic !important;
+}
+
+.cm-lp-task-checked {
+  color: #a6adc8 !important;
+  text-decoration: line-through !important;
+}
+
+.cm-lp-hidden-syntax {
+  font-size: 0 !important;
+  width: 0 !important;
+  display: inline-block !important;
+  overflow: hidden !important;
+}
+
+.cm-lp-task-box {
+  margin-right: 0.5rem;
+  cursor: pointer;
+  accent-color: #89b4fa;
+}
+
+/* Vim Mode Status Indicators */
+.vim-normal {
+  background-color: #89b4fa;
+  color: #11111b;
+}
+
+.vim-insert {
+  background-color: #a6e3a1;
+  color: #11111b;
+}
+
+.vim-visual {
+  background-color: #fab387;
+  color: #11111b;
+}
+
+.vim-replace {
+  background-color: #f38ba8;
+  color: #11111b;
+}
