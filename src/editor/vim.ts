@@ -65,6 +65,12 @@ export function registerVimCommands(): void {
     dispatchVimEvent('notes:open-cheatsheet');
   });
 
+  Vim.defineEx('explore', 'explore', () => {
+    dispatchVimEvent('notes:open-explorer');
+  });
+  Vim.defineEx('yazi', 'yazi', () => {
+    dispatchVimEvent('notes:open-explorer');
+  });
   // Native Vim actions (dispatched directly on key combos without opening an ex prompt)
   Vim.defineAction('notesFindFiles', () => {
     dispatchVimEvent('notes:find-files');
@@ -86,6 +92,9 @@ export function registerVimCommands(): void {
   });
 }
 
+  Vim.defineAction('notesExplore', () => {
+    dispatchVimEvent('notes:open-explorer');
+  });
 export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKeymap[] = []): void {
   registerVimCommands();
 
@@ -101,7 +110,8 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
     }
   }
 
-  // Built-in Telescope & Action Leader mappings in Normal mode using native actions
+  Vim.mapCommand(`${leader}-`, 'action', 'notesExplore', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}e`, 'action', 'notesExplore', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}ff`, 'action', 'notesFindFiles', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}fw`, 'action', 'notesLiveGrep', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}g`, 'action', 'notesExportGdoc', {}, { context: 'normal' });

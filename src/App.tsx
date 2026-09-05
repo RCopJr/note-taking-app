@@ -9,6 +9,7 @@ import {
   createNote,
   createFolder,
   deleteNote,
+  renamePath,
   updateConfig,
 } from './api.ts';
 import type {
@@ -21,11 +22,13 @@ import type {
 import { Editor } from './editor/Editor.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { TelescopeModal, type TelescopeMode } from './components/TelescopeModal.tsx';
+import { YaziModal } from './components/YaziModal.tsx';
 import { ExportModal } from './components/ExportModal.tsx';
 import { CheatsheetModal } from './components/CheatsheetModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
 import {
   FileText,
+  Folder,
   Search,
   Settings,
   Share2,
@@ -43,8 +46,9 @@ export const App: React.FC = () => {
   const [activeNote, setActiveNote] = useState<NoteDocument | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Modals and Panes
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  // Modals and Panes: Sidebar defaults to FALSE for distraction-free 100% editor layout
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isExplorerOpen, setIsExplorerOpen] = useState<boolean>(false);
   const [isTelescopeOpen, setIsTelescopeOpen] = useState<boolean>(false);
   const [telescopeMode, setTelescopeMode] = useState<TelescopeMode>('files');
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
@@ -94,6 +98,10 @@ export const App: React.FC = () => {
       setIsTelescopeOpen(true);
     };
 
+    const onOpenExplorer = () => {
+      setIsExplorerOpen(true);
+    };
+
     const onToggleSidebar = () => {
       setIsSidebarOpen((prev) => !prev);
     };
@@ -109,6 +117,9 @@ export const App: React.FC = () => {
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'k')) {
         e.preventDefault();
         onFindFiles();
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        onOpenExplorer();
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 'b' || e.key === 'e')) {
         e.preventDefault();
         onToggleSidebar();
@@ -117,6 +128,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('notes:find-files', onFindFiles);
     window.addEventListener('notes:live-grep', onLiveGrep);
+    window.addEventListener('notes:open-explorer', onOpenExplorer);
     window.addEventListener('notes:toggle-sidebar', onToggleSidebar);
     window.addEventListener('notes:export-gdoc', onExport);
     window.addEventListener('notes:open-cheatsheet', onCheatsheet);
@@ -126,6 +138,7 @@ export const App: React.FC = () => {
     return () => {
       window.removeEventListener('notes:find-files', onFindFiles);
       window.removeEventListener('notes:live-grep', onLiveGrep);
+      window.removeEventListener('notes:open-explorer', onOpenExplorer);
       window.removeEventListener('notes:toggle-sidebar', onToggleSidebar);
       window.removeEventListener('notes:export-gdoc', onExport);
       window.removeEventListener('notes:open-cheatsheet', onCheatsheet);
@@ -134,16 +147,9 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  const handleSelectNote = async (noteId: string) => {
-    try {
-      const note = await fetchNote(noteId);
-      setActiveNote(note);
-    } catch (err) {
-      console.error('Failed to open note:', err);
-    }
-  };
   const handleCloseModals = () => {
     setIsTelescopeOpen(false);
+    setIsExplorerOpen(false);
     setIsExportOpen(false);
     setIsCheatsheetOpen(false);
     setIsSettingsOpen(false);
@@ -152,12 +158,24 @@ export const App: React.FC = () => {
     }, 20);
   };
 
+  const handleSelectNote = async (noteId: string) => {
+    try {
+      const note = await fetchNote(noteId);
+      setActiveNote(note);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('notes:focus-editor'));
+      }, 50);
+    } catch (err) {
+      console.error('Failed to open note:', err);
+    }
+  };
+
   const handleSave = useCallback(async (content: string) => {
     if (!activeNote) return;
     const updated = await saveNoteContent(activeNote.id, content);
     setActiveNote(updated);
 
-    // Update note title and metadata
+    // Update note title and metadata in list
     setNotes((prev) =>
       prev.map((n) => (n.id === updated.id ? { ...n, title: updated.title, updatedAt: updated.updatedAt } : n))
     );
@@ -179,6 +197,7 @@ export const App: React.FC = () => {
       );
       setActiveNote(created);
       await refreshData();
+      handleCloseModals();
     } catch (err) {
       alert(`Failed to create note: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -208,6 +227,19 @@ export const App: React.FC = () => {
       await refreshData();
     } catch (err) {
       alert(`Failed to delete: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleRenamePath = async (oldPath: string, newPath: string) => {
+    try {
+      await renamePath(oldPath, newPath);
+      if (activeNote?.id === oldPath) {
+        const renamed = await fetchNote(newPath);
+        setActiveNote(renamed);
+      }
+      await refreshData();
+    } catch (err) {
+      alert(`Failed to rename: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -265,16 +297,31 @@ export const App: React.FC = () => {
 
         {/* Global Action Buttons */}
         <div className="flex items-center space-x-1">
+          {/* Yazi File Explorer Button */}
+          <button
+            type="button"
+            onClick={() => setIsExplorerOpen(true)}
+            className="flex items-center space-x-1.5 px-2 py-1 text-xs rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            title="Open Yazi Explorer (<leader>- or Cmd+O)"
+          >
+            <Folder size={14} className="text-[#89b4fa]" />
+            <span className="font-mono text-[11px] bg-[#181825] px-1 py-0.5 rounded border border-[#313244]">
+              {config?.leaderKey || '<Space>'}-
+            </span>
+          </button>
+
+          {/* New Note Button */}
           <button
             type="button"
             onClick={() => handleCreateNote()}
-            className="flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer mr-2"
+            className="flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer mr-1"
             title="Create New Note"
           >
             <Plus size={14} />
             <span>New Note</span>
           </button>
 
+          {/* Find Files Button */}
           <button
             type="button"
             onClick={() => {
@@ -290,6 +337,7 @@ export const App: React.FC = () => {
             </span>
           </button>
 
+          {/* Export to Google Docs */}
           <button
             type="button"
             onClick={() => setIsExportOpen(true)}
@@ -300,6 +348,7 @@ export const App: React.FC = () => {
             <span className="hidden sm:inline">Google Docs</span>
           </button>
 
+          {/* Cheatsheet Modal Button */}
           <button
             type="button"
             onClick={() => setIsCheatsheetOpen(true)}
@@ -309,6 +358,7 @@ export const App: React.FC = () => {
             <HelpCircle size={16} />
           </button>
 
+          {/* Settings Modal Button */}
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
@@ -320,9 +370,9 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Workspace Area with Sidebar + Editor */}
+      {/* Main Workspace Area: Sidebar (Hidden by default for distraction-free mode) + Editor */}
       <div className="flex-1 w-full overflow-hidden flex">
-        {/* Hierarchical Folder Tree Sidebar */}
+        {/* Optional Hierarchical Folder Tree Sidebar */}
         <Sidebar
           isOpen={isSidebarOpen}
           tree={tree}
@@ -337,7 +387,7 @@ export const App: React.FC = () => {
           onResync={refreshData}
         />
 
-        {/* CodeMirror Editor */}
+        {/* 100% Full-Width Distraction-Free CodeMirror Editor */}
         <main className="flex-1 h-full overflow-hidden flex flex-col">
           {activeNote ? (
             <Editor
@@ -357,11 +407,24 @@ export const App: React.FC = () => {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-[#585b70] space-y-2">
               <FileText size={32} />
-              <span>No note open. Create or select a note from the sidebar.</span>
+              <span>No note open. Press &lt;Space&gt;- to explore files or &lt;Space&gt;ff to search.</span>
             </div>
           )}
         </main>
       </div>
+
+      {/* Yazi-Style File Explorer Modal */}
+      <YaziModal
+        isOpen={isExplorerOpen}
+        tree={tree}
+        activeNoteId={activeNote?.id || null}
+        onSelectNote={handleSelectNote}
+        onCreateNote={handleCreateNote}
+        onCreateFolder={handleCreateFolder}
+        onDeletePath={handleDeletePath}
+        onRenamePath={handleRenamePath}
+        onClose={handleCloseModals}
+      />
 
       {/* Telescope Search Modal */}
       <TelescopeModal
