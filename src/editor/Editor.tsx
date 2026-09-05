@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers as cmLineNumbers } from '@codemirror/view';
+import { EditorView, lineNumbers as cmLineNumbers, drawSelection } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
+import { history } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { getCM } from '@replit/codemirror-vim';
 import type { VimKeymap } from '../types.ts';
 import {
   createVimExtension,
   setupVimKeymaps,
-  subscribeVimMode,
   type VimMode,
 } from './vim.ts';
 import {
@@ -29,6 +30,11 @@ export interface EditorProps {
   autosaveDelayMs?: number;
 }
 
+interface VimModeChangeEvent {
+  mode: string;
+  subMode?: string;
+}
+
 export const Editor: React.FC<EditorProps> = ({
   noteId,
   initialContent,
@@ -45,31 +51,27 @@ export const Editor: React.FC<EditorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentNoteIdRef = useRef<string>(noteId);
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
   const [vimMode, setVimMode] = useState<VimMode>('NORMAL');
+  const [subMode, setSubMode] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<string>('Ready');
   const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
   const [isLivePreviewActive, setIsLivePreviewActive] = useState<boolean>(livePreview);
 
-  // Setup Vim custom keymaps
+  // Setup Vim custom keymaps and unmap default Space
   useEffect(() => {
     setupVimKeymaps(leaderKey, customKeymaps);
   }, [leaderKey, customKeymaps]);
-
-  // Subscribe to Vim mode changes
-  useEffect(() => {
-    const unsubscribe = subscribeVimMode((mode) => {
-      setVimMode(mode);
-    });
-    return unsubscribe;
-  }, []);
 
   const handleManualSave = useCallback(async () => {
     if (!viewRef.current) return;
     const content = viewRef.current.state.doc.toString();
     setSaveStatus('Saving...');
     try {
-      await onSave(content);
+      await onSaveRef.current(content);
       const filename = noteId.split('/').pop() || noteId;
       setSaveStatus(`"${filename}" written`);
       setTimeout(() => {
@@ -78,7 +80,7 @@ export const Editor: React.FC<EditorProps> = ({
     } catch {
       setSaveStatus('Error saving');
     }
-  }, [noteId, onSave]);
+  }, [noteId]);
 
   // Listen to custom window events from Vim ex-commands or shortcuts
   useEffect(() => {
@@ -94,6 +96,12 @@ export const Editor: React.FC<EditorProps> = ({
       setIsLivePreviewActive(true);
     };
 
+    const onFocusEditor = () => {
+      if (viewRef.current) {
+        viewRef.current.focus();
+      }
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
@@ -104,12 +112,14 @@ export const Editor: React.FC<EditorProps> = ({
     window.addEventListener('notes:save', onVimSave);
     window.addEventListener('notes:toggle-raw', onToggleRaw);
     window.addEventListener('notes:toggle-preview', onTogglePreview);
+    window.addEventListener('notes:focus-editor', onFocusEditor);
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
       window.removeEventListener('notes:save', onVimSave);
       window.removeEventListener('notes:toggle-raw', onToggleRaw);
       window.removeEventListener('notes:toggle-preview', onTogglePreview);
+      window.removeEventListener('notes:focus-editor', onFocusEditor);
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [handleManualSave]);
@@ -124,15 +134,17 @@ export const Editor: React.FC<EditorProps> = ({
     });
   }, [isLivePreviewActive]);
 
-  // Initialize CodeMirror 6 Editor
+  // Initialize CodeMirror 6 Editor ONLY when noteId changes or on mount
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Destroy existing view if noteId changes
+    // Destroy existing view if switching notes
     if (viewRef.current) {
       viewRef.current.destroy();
       viewRef.current = null;
     }
+
+    currentNoteIdRef.current = noteId;
 
     const updateListener = EditorView.updateListener.of((update) => {
       if (update.selectionSet) {
@@ -151,8 +163,9 @@ export const Editor: React.FC<EditorProps> = ({
             clearTimeout(autosaveTimerRef.current);
           }
           autosaveTimerRef.current = setTimeout(() => {
-            const currentText = update.state.doc.toString();
-            onSave(currentText).then(() => {
+            if (!viewRef.current) return;
+            const currentText = viewRef.current.state.doc.toString();
+            onSaveRef.current(currentText).then(() => {
               setSaveStatus('Autosaved');
               setTimeout(() => setSaveStatus('Ready'), 1500);
             }).catch(() => {
@@ -165,6 +178,8 @@ export const Editor: React.FC<EditorProps> = ({
 
     const extensions = [
       createVimExtension(),
+      drawSelection(),
+      history(),
       markdown(),
       oneDark,
       updateListener,
@@ -192,6 +207,25 @@ export const Editor: React.FC<EditorProps> = ({
     });
 
     viewRef.current = view;
+    view.focus();
+
+    // Hook into Vim adapter mode changes
+    try {
+      const cm = getCM(view);
+      if (cm && typeof cm.on === 'function') {
+        cm.on('vim-mode-change', (data: VimModeChangeEvent) => {
+          const rawMode = (data.mode || 'normal').toUpperCase();
+          if (rawMode === 'INSERT') setVimMode('INSERT');
+          else if (rawMode === 'VISUAL') setVimMode('VISUAL');
+          else if (rawMode === 'REPLACE') setVimMode('REPLACE');
+          else setVimMode('NORMAL');
+
+          setSubMode(data.subMode ? data.subMode.toUpperCase() : '');
+        });
+      }
+    } catch {
+      // Ignore if adapter unavailable
+    }
 
     return () => {
       if (autosaveTimerRef.current) {
@@ -200,7 +234,9 @@ export const Editor: React.FC<EditorProps> = ({
       view.destroy();
       viewRef.current = null;
     };
-  }, [noteId, initialContent, fontSize, fontFamily, lineNumbers, autosave, autosaveDelayMs, isLivePreviewActive, onSave]);
+    // Note: initialContent is intentionally NOT in dependency array so autosaves do not recreate the editor!
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteId, fontSize, fontFamily, lineNumbers, autosave, autosaveDelayMs]);
 
   const modeBadgeColor =
     vimMode === 'INSERT'
@@ -223,7 +259,7 @@ export const Editor: React.FC<EditorProps> = ({
       <div className="h-7 bg-[#11111b] border-t border-[#313244] flex items-center justify-between px-3 text-xs select-none font-mono text-[#a6adc8]">
         <div className="flex items-center space-x-3">
           <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider text-[10px] ${modeBadgeColor}`}>
-            {vimMode}
+            {vimMode} {subMode ? `(${subMode})` : ''}
           </span>
           <span className="text-[#cdd6f4] font-medium truncate max-w-sm">
             {noteId}

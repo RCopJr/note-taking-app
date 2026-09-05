@@ -51,7 +51,7 @@ export function registerVimCommands(): void {
     dispatchVimEvent('notes:toggle-preview');
   });
 
-  // Internal ex-commands for leader mappings
+  // Ex-commands
   Vim.defineEx('findfiles', 'findfiles', () => {
     dispatchVimEvent('notes:find-files');
   });
@@ -64,20 +64,50 @@ export function registerVimCommands(): void {
   Vim.defineEx('cheatsheet', 'cheatsheet', () => {
     dispatchVimEvent('notes:open-cheatsheet');
   });
+
+  // Native Vim actions (dispatched directly on key combos without opening an ex prompt)
+  Vim.defineAction('notesFindFiles', () => {
+    dispatchVimEvent('notes:find-files');
+  });
+  Vim.defineAction('notesLiveGrep', () => {
+    dispatchVimEvent('notes:live-grep');
+  });
+  Vim.defineAction('notesExportGdoc', () => {
+    dispatchVimEvent('notes:export-gdoc');
+  });
+  Vim.defineAction('notesToggleSidebar', () => {
+    dispatchVimEvent('notes:toggle-sidebar');
+  });
+  Vim.defineAction('notesCheatsheet', () => {
+    dispatchVimEvent('notes:open-cheatsheet');
+  });
+  Vim.defineAction('notesToggleRaw', () => {
+    dispatchVimEvent('notes:toggle-raw');
+  });
 }
+
 export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKeymap[] = []): void {
   registerVimCommands();
 
   // Normalize leader key representation
   const leader = leaderKey === ' ' ? '<Space>' : leaderKey;
 
-  // Built-in Telescope & Action Leader mappings in Normal mode
-  Vim.map(`${leader}ff`, ':findfiles<CR>', 'normal');
-  Vim.map(`${leader}fw`, ':livegrep<CR>', 'normal');
-  Vim.map(`${leader}g`, ':gdoc<CR>', 'normal');
-  Vim.map(`${leader}e`, ':sidebar<CR>', 'normal');
-  Vim.map(`${leader}?`, ':cheatsheet<CR>', 'normal');
-  Vim.map(`${leader}tr`, ':raw<CR>', 'normal');
+  // Unmap default space behavior so it buffers as a leader key instead of moving right
+  if (leader === '<Space>') {
+    try {
+      Vim.unmap('<Space>', undefined as unknown as string);
+    } catch {
+      // Ignore if not present
+    }
+  }
+
+  // Built-in Telescope & Action Leader mappings in Normal mode using native actions
+  Vim.mapCommand(`${leader}ff`, 'action', 'notesFindFiles', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}fw`, 'action', 'notesLiveGrep', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}g`, 'action', 'notesExportGdoc', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}e`, 'action', 'notesToggleSidebar', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}?`, 'action', 'notesCheatsheet', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}tr`, 'action', 'notesToggleRaw', {}, { context: 'normal' });
 
   // Register user custom keymaps
   for (const km of customMaps) {

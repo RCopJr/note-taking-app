@@ -142,6 +142,15 @@ export const App: React.FC = () => {
       console.error('Failed to open note:', err);
     }
   };
+  const handleCloseModals = () => {
+    setIsTelescopeOpen(false);
+    setIsExportOpen(false);
+    setIsCheatsheetOpen(false);
+    setIsSettingsOpen(false);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('notes:focus-editor'));
+    }, 20);
+  };
 
   const handleSave = useCallback(async (content: string) => {
     if (!activeNote) return;
@@ -360,7 +369,7 @@ export const App: React.FC = () => {
         initialMode={telescopeMode}
         notes={notes}
         onSelectNote={handleSelectNote}
-        onClose={() => setIsTelescopeOpen(false)}
+        onClose={handleCloseModals}
       />
 
       {/* Google Docs & File Export Modal */}
@@ -369,7 +378,7 @@ export const App: React.FC = () => {
           isOpen={isExportOpen}
           noteId={activeNote.id}
           content={activeNote.content}
-          onClose={() => setIsExportOpen(false)}
+          onClose={handleCloseModals}
         />
       )}
 
@@ -377,7 +386,7 @@ export const App: React.FC = () => {
       <CheatsheetModal
         isOpen={isCheatsheetOpen}
         leaderKey={config?.leaderKey || '<Space>'}
-        onClose={() => setIsCheatsheetOpen(false)}
+        onClose={handleCloseModals}
       />
 
       {/* Settings Modal */}
@@ -385,7 +394,7 @@ export const App: React.FC = () => {
         isOpen={isSettingsOpen}
         config={config}
         onSave={handleSaveConfig}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={handleCloseModals}
       />
     </div>
   );

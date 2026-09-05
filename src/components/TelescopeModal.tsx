@@ -43,6 +43,19 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
     }
   }, [isOpen, initialMode]);
 
+  // Handle global Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   // Filter files in 'files' mode
   const fileResults = React.useMemo(() => {
     if (mode !== 'files') return [];
