@@ -108,7 +108,7 @@ export const Editor: React.FC<EditorProps> = ({
             const idx = text.indexOf(matchTerm);
             if (idx >= 0) {
               viewRef.current.dispatch({
-                selection: { anchor: idx, head: idx + matchTerm.length },
+                selection: { anchor: idx, head: idx },
                 scrollIntoView: true,
               });
             }
@@ -116,7 +116,6 @@ export const Editor: React.FC<EditorProps> = ({
         }
       }
     };
-
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
