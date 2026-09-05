@@ -157,7 +157,7 @@ export function searchNotesFts(query: string, limit: number = 30): FtsSearchResu
       SELECT
         f.id,
         f.title,
-        snippet(notes_fts, 2, '<mark>', '</mark>', '...', 15) as snippet,
+        snippet(notes_fts, -1, '<mark>', '</mark>', '...', 20) as snippet,
         bm25(notes_fts) as rank,
         n.tags
       FROM notes_fts f

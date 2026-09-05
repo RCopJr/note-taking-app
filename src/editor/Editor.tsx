@@ -96,9 +96,24 @@ export const Editor: React.FC<EditorProps> = ({
       setIsLivePreviewActive(true);
     };
 
-    const onFocusEditor = () => {
+    const onFocusEditor = (e: Event) => {
       if (viewRef.current) {
         viewRef.current.focus();
+
+        const customEvt = e as CustomEvent<{ match?: string }>;
+        if (customEvt.detail?.match && typeof customEvt.detail.match === 'string') {
+          const matchTerm = customEvt.detail.match.trim().toLowerCase();
+          if (matchTerm) {
+            const text = viewRef.current.state.doc.toString().toLowerCase();
+            const idx = text.indexOf(matchTerm);
+            if (idx >= 0) {
+              viewRef.current.dispatch({
+                selection: { anchor: idx, head: idx + matchTerm.length },
+                scrollIntoView: true,
+              });
+            }
+          }
+        }
       }
     };
 

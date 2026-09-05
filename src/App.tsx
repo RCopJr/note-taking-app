@@ -158,13 +158,15 @@ export const App: React.FC = () => {
     }, 20);
   };
 
-  const handleSelectNote = async (noteId: string) => {
+  const handleSelectNote = async (noteId: string, searchMatch?: string) => {
     try {
       const note = await fetchNote(noteId);
       setActiveNote(note);
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('notes:focus-editor'));
-      }, 50);
+        window.dispatchEvent(
+          new CustomEvent('notes:focus-editor', { detail: { match: searchMatch } })
+        );
+      }, 60);
     } catch (err) {
       console.error('Failed to open note:', err);
     }
@@ -337,6 +339,21 @@ export const App: React.FC = () => {
             </span>
           </button>
 
+          {/* Live Grep Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setTelescopeMode('grep');
+              setIsTelescopeOpen(true);
+            }}
+            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            title="Live Grep (<leader>fw or Cmd+Shift+F)"
+          >
+            <Search size={14} className="text-[#fab387]" />
+            <span className="font-mono text-[11px] bg-[#181825] px-1 py-0.5 rounded border border-[#313244]">
+              {config?.leaderKey || '<Space>'}fw
+            </span>
+          </button>
           {/* Export to Google Docs */}
           <button
             type="button"

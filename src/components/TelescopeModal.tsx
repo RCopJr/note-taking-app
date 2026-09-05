@@ -9,7 +9,7 @@ export interface TelescopeModalProps {
   isOpen: boolean;
   initialMode?: TelescopeMode;
   notes: NoteMetadata[];
-  onSelectNote: (noteId: string) => void;
+  onSelectNote: (noteId: string, searchMatch?: string) => void;
   onClose: () => void;
 }
 
@@ -134,7 +134,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
     } else {
       const result = grepResults[selectedIndex];
       if (result) {
-        onSelectNote(result.id);
+        onSelectNote(result.id, query);
         onClose();
       }
     }
@@ -284,8 +284,17 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                 );
               })
             ) : (
-              <div className="p-8 text-center text-xs text-[#585b70]">
-                No matching files found.
+              <div className="p-8 text-center text-xs text-[#585b70] space-y-2">
+                <div>No matching files found by title.</div>
+                {query.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => { setMode('grep'); setSelectedIndex(0); }}
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#fab387] cursor-pointer transition-colors text-xs mt-1"
+                  >
+                    <span>Search contents for &quot;{query}&quot; (Press Tab)</span>
+                  </button>
+                )}
               </div>
             )
           ) : grepResults.length > 0 ? (
@@ -295,10 +304,10 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                 <div
                   key={result.id}
                   data-index={idx}
-                  onClick={() => {
-                    onSelectNote(result.id);
-                    onClose();
-                  }}
+                    onClick={() => {
+                      onSelectNote(result.id, query);
+                      onClose();
+                    }}
                   className={`flex flex-col px-3 py-2 cursor-pointer transition-colors text-xs ${
                     isSelected
                       ? 'bg-[#313244] text-[#cdd6f4]'
