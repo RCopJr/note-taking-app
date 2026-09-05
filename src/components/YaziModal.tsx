@@ -4,6 +4,7 @@ import {
   FileText,
   FileCode,
   CornerLeftUp,
+  AlertTriangle,
   X,
 } from 'lucide-react';
 import type { FileNode } from '../types.ts';
@@ -54,6 +55,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
 }) => {
   const [currentPath, setCurrentPath] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [itemToDelete, setItemToDelete] = useState<FileNode | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
 
@@ -68,6 +70,8 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       }, 50);
     }
   }, [isOpen]);
+
+  // Initialize directory based on active note on open
   useEffect(() => {
     if (isOpen) {
       if (activeNoteId) {
@@ -188,6 +192,20 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     if (!isOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
+      // Handle in-app delete confirmation keys
+      if (itemToDelete) {
+        if (e.key === 'Enter' || e.key === 'y') {
+          e.preventDefault();
+          const path = itemToDelete.path;
+          setItemToDelete(null);
+          onDeletePath(path).catch(() => {});
+        } else if (e.key === 'Escape' || e.key === 'q' || e.key === 'n') {
+          e.preventDefault();
+          setItemToDelete(null);
+        }
+        return;
+      }
+
       // Ignore if an input or dialog is active
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
@@ -217,9 +235,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       } else if (e.key === 'd') {
         if (selectedItem) {
           e.preventDefault();
-          if (confirm(`Delete ${selectedItem.type} "${selectedItem.name}"?`)) {
-            onDeletePath(selectedItem.path).catch(() => {});
-          }
+          setItemToDelete(selectedItem);
         }
       } else if (e.key === 'r') {
         if (selectedItem) {
@@ -240,6 +256,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     isOpen,
     currentPath,
     selectedItem,
+    itemToDelete,
     handleMoveDown,
     handleMoveUp,
     handleEnterOrDescend,
@@ -261,7 +278,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="w-full max-w-5xl h-[78vh] bg-[#181825] border border-[#313244] rounded-xl shadow-2xl overflow-hidden flex flex-col focus:outline-none"
+        className="w-full max-w-5xl h-[78vh] bg-[#181825] border border-[#313244] rounded-xl shadow-2xl overflow-hidden flex flex-col focus:outline-none relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Breadcrumbs Bar */}
@@ -461,6 +478,50 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           </div>
           <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#cdd6f4]">q / Esc</kbd> close</span>
         </div>
+
+        {/* In-app Deletion Confirmation Dialog Overlay */}
+        {itemToDelete && (
+          <div
+            className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#1e1e2e] border border-[#f38ba8]/60 p-5 rounded-xl shadow-2xl max-w-md w-full space-y-4">
+              <div className="flex items-center space-x-2 text-[#f38ba8]">
+                <AlertTriangle size={20} />
+                <h3 className="font-bold text-sm">
+                  Delete {itemToDelete.type === 'directory' ? 'Folder' : 'File'}
+                </h3>
+              </div>
+              <p className="text-xs text-[#cdd6f4] leading-relaxed">
+                Are you sure you want to delete {itemToDelete.type}{' '}
+                <span className="font-bold text-[#fab387]">&quot;{itemToDelete.name}&quot;</span>
+                {itemToDelete.type === 'directory'
+                  ? ' and all of its contents? This cannot be undone.'
+                  : '?'}
+              </p>
+              <div className="flex justify-end space-x-2 text-xs pt-2">
+                <button
+                  type="button"
+                  onClick={() => setItemToDelete(null)}
+                  className="px-3 py-1.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer"
+                >
+                  Cancel (Esc)
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const path = itemToDelete.path;
+                    setItemToDelete(null);
+                    await onDeletePath(path);
+                  }}
+                  className="px-3 py-1.5 rounded bg-[#f38ba8] hover:bg-[#eba0ac] text-[#11111b] font-bold transition-colors cursor-pointer"
+                >
+                  Delete (Enter)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

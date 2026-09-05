@@ -119,8 +119,9 @@ export function indexNote(
 
 export function deleteNoteFromDb(id: string): void {
   const db = dbInstance || initDb();
-  db.prepare('DELETE FROM notes WHERE id = ?;').run(id);
-  db.prepare('DELETE FROM notes_fts WHERE id = ?;').run(id);
+  const childPattern = `${id}/%`;
+  db.prepare('DELETE FROM notes WHERE id = ? OR id LIKE ?;').run(id, childPattern);
+  db.prepare('DELETE FROM notes_fts WHERE id = ? OR id LIKE ?;').run(id, childPattern);
 }
 
 export function getAllNotes(): NoteMetadata[] {
