@@ -132,6 +132,15 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
   // Support Tab and Shift-Tab in normal mode for indentation
   Vim.map('<Tab>', '>>', 'normal');
   Vim.map('<S-Tab>', '<<', 'normal');
+  // Swap j/k (visual screen lines) and gj/gk (buffer logical lines) for wrapped prose
+  Vim.noremap('j', 'gj', 'normal');
+  Vim.noremap('k', 'gk', 'normal');
+  Vim.noremap('gj', 'j', 'normal');
+  Vim.noremap('gk', 'k', 'normal');
+  Vim.noremap('j', 'gj', 'visual');
+  Vim.noremap('k', 'gk', 'visual');
+  Vim.noremap('gj', 'j', 'visual');
+  Vim.noremap('gk', 'k', 'visual');
 
   // Built-in escape keymaps
   Vim.map('jk', '<Esc>', 'insert');

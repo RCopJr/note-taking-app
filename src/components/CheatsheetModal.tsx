@@ -41,6 +41,8 @@ export const CheatsheetModal: React.FC<CheatsheetModalProps> = ({
     { category: 'Vim Motions & Commands', command: 'i / a / o', description: 'Enter Insert mode (at cursor / after / on new line below)' },
     { category: 'Vim Motions & Commands', command: 'dd / yy / p', description: 'Delete line / yank (copy) line / put (paste)' },
     { category: 'Vim Motions & Commands', command: 'ciw / caw', description: 'Change inner word / change around word' },
+    { category: 'Vim Motions & Commands', command: 'j / k', description: 'Move down / up by visual screen line (through wrapped lines)' },
+    { category: 'Vim Motions & Commands', command: 'gj / gk', description: 'Move down / up by logical buffer line' },
     { category: 'Vim Motions & Commands', command: 'v / V', description: 'Character visual mode / line visual mode' },
 
     // Markdown Syntax
