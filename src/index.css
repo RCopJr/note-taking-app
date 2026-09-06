@@ -159,6 +159,15 @@ body {
   accent-color: #61afef;
 }
 
+.cm-lp-bullet {
+  color: #61afef;
+  font-weight: bold;
+  display: inline-block;
+  transform: scale(1.35);
+  margin-right: 0.25rem;
+  line-height: 1;
+}
+
 /* Vim Mode Status Indicators (Typora palette) */
 .vim-normal {
   background-color: #61afef;

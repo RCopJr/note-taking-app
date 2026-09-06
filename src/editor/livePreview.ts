@@ -42,6 +42,19 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
+class BulletWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const span = document.createElement('span');
+    span.className = 'cm-lp-bullet';
+    span.textContent = '•';
+    return span;
+  }
+
+  eq(): boolean {
+    return true;
+  }
+}
+
 // Decoration definitions
 const headingDecorations: Record<number, Decoration> = {
   1: Decoration.line({ class: 'cm-lp-h1' }),
@@ -113,8 +126,8 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
           });
         }
 
-        // 3. Task lists: - [ ] or - [x]
-        const taskMatch = text.match(/^(\s*[-*]\s+)\[([ xX])\]\s+/);
+        // 3. Task lists or standard bullet lists
+        const taskMatch = text.match(/^(\s*[-*+]\s+)\[([ xX])\]\s+/);
         if (taskMatch) {
           const prefixLen = taskMatch[1].length;
           const boxPos = line.from + prefixLen + 1; // position of ' ' or 'x'
@@ -127,6 +140,20 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
               widget: new CheckboxWidget(isChecked, boxPos),
             }),
           });
+        } else {
+          // 3b. Standard Bullet lists: - item, * item, + item
+          const bulletMatch = text.match(/^(\s*)([-*+])(\s+)/);
+          if (bulletMatch && bulletMatch[2]) {
+            const indentLen = bulletMatch[1].length;
+            const bulletStart = line.from + indentLen;
+            markDecos.push({
+              from: bulletStart,
+              to: bulletStart + 1,
+              value: Decoration.replace({
+                widget: new BulletWidget(),
+              }),
+            });
+          }
         }
 
         // 4. Inline Bold: **text**
