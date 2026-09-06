@@ -115,10 +115,12 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
   Vim.mapCommand(`${leader}ff`, 'action', 'notesFindFiles', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}fw`, 'action', 'notesLiveGrep', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}g`, 'action', 'notesExportGdoc', {}, { context: 'normal' });
-  Vim.mapCommand(`${leader}e`, 'action', 'notesToggleSidebar', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}?`, 'action', 'notesCheatsheet', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}tr`, 'action', 'notesToggleRaw', {}, { context: 'normal' });
 
+  // Support Tab and Shift-Tab in normal mode for indentation
+  Vim.map('<Tab>', '>>', 'normal');
+  Vim.map('<S-Tab>', '<<', 'normal');
   // Register user custom keymaps
   for (const km of customMaps) {
     if (km.before && km.after && km.mode) {

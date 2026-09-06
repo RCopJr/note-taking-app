@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { EditorState } from '@codemirror/state';
-import { EditorView, drawSelection } from '@codemirror/view';
+import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
-import { history } from '@codemirror/commands';
+import { history, indentWithTab } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { getCM } from '@replit/codemirror-vim';
 import type { VimKeymap } from '../types.ts';
@@ -183,6 +183,7 @@ export const Editor: React.FC<EditorProps> = ({
 
     const extensions = [
       createVimExtension(),
+      keymap.of([indentWithTab]),
       drawSelection(),
       history(),
       markdown(),
