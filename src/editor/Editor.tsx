@@ -182,6 +182,7 @@ export const Editor: React.FC<EditorProps> = ({
 
     const extensions = [
       createVimExtension(),
+      EditorView.lineWrapping,
       keymap.of([indentWithTab]),
       drawSelection(),
       history(),
