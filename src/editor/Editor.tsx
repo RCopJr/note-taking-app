@@ -241,12 +241,12 @@ export const Editor: React.FC<EditorProps> = ({
 
   const modeBadgeColor =
     vimMode === 'INSERT'
-      ? 'bg-[#a6e3a1] text-[#11111b]'
+      ? 'bg-[#24292e] text-white'
       : vimMode === 'VISUAL'
-      ? 'bg-[#fab387] text-[#11111b]'
+      ? 'bg-[#586069] text-white'
       : vimMode === 'REPLACE'
-      ? 'bg-[#f38ba8] text-[#11111b]'
-      : 'bg-[#89b4fa] text-[#11111b]';
+      ? 'bg-[#24292e] text-white'
+      : 'bg-[#24292e] text-white';
 
   return (
     <div className="flex flex-col h-full w-full bg-white overflow-hidden">

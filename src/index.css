@@ -74,11 +74,25 @@ body {
   background-color: #cce5ff !important;
 }
 
-/* Typora Clean Monochrome Live Preview Headings */
+/* Typora Clean Monochrome Headings (No red or colors) */
+.cm-lp-h1,
+.cm-lp-h1 *,
+.cm-lp-h2,
+.cm-lp-h2 *,
+.cm-lp-h3,
+.cm-lp-h3 *,
+.cm-lp-h4,
+.cm-lp-h4 *,
+.cm-lp-h5,
+.cm-lp-h5 *,
+.cm-lp-h6,
+.cm-lp-h6 * {
+  color: #111111 !important;
+}
+
 .cm-lp-h1 {
   font-size: 2.2rem !important;
   font-weight: 700 !important;
-  color: #111111 !important;
   line-height: 1.25 !important;
   padding-top: 1.4rem !important;
   padding-bottom: 0.4rem !important;
@@ -87,7 +101,6 @@ body {
 .cm-lp-h2 {
   font-size: 1.65rem !important;
   font-weight: 700 !important;
-  color: #111111 !important;
   line-height: 1.3 !important;
   padding-top: 1.2rem !important;
   padding-bottom: 0.3rem !important;
@@ -96,7 +109,6 @@ body {
 .cm-lp-h3 {
   font-size: 1.35rem !important;
   font-weight: 600 !important;
-  color: #222222 !important;
   line-height: 1.35 !important;
   padding-top: 1rem !important;
 }
@@ -104,10 +116,17 @@ body {
 .cm-lp-h4, .cm-lp-h5, .cm-lp-h6 {
   font-size: 1.15rem !important;
   font-weight: 600 !important;
-  color: #333333 !important;
   padding-top: 0.7rem !important;
 }
 
+/* Neutralize all CodeMirror syntax auto-coloring (no green numbers, no colored tokens) */
+.cm-editor .cm-line * {
+  color: inherit !important;
+}
+
+.cm-editor span[class*="ͼ"] {
+  color: inherit !important;
+}
 .cm-lp-bold {
   font-weight: 700 !important;
   color: #111111 !important;
