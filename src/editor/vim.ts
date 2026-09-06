@@ -71,6 +71,12 @@ export function registerVimCommands(): void {
   Vim.defineEx('yazi', 'yazi', () => {
     dispatchVimEvent('notes:open-explorer');
   });
+  Vim.defineEx('set', 'set', () => {
+    dispatchVimEvent('notes:open-settings');
+  });
+  Vim.defineEx('settings', 'settings', () => {
+    dispatchVimEvent('notes:open-settings');
+  });
   // Native Vim actions (dispatched directly on key combos without opening an ex prompt)
   Vim.defineAction('notesFindFiles', () => {
     dispatchVimEvent('notes:find-files');
@@ -89,6 +95,9 @@ export function registerVimCommands(): void {
   });
   Vim.defineAction('notesToggleRaw', () => {
     dispatchVimEvent('notes:toggle-raw');
+  });
+  Vim.defineAction('notesOpenSettings', () => {
+    dispatchVimEvent('notes:open-settings');
   });
 }
 
@@ -118,6 +127,8 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
   Vim.mapCommand(`${leader}?`, 'action', 'notesCheatsheet', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}tr`, 'action', 'notesToggleRaw', {}, { context: 'normal' });
 
+  Vim.mapCommand(`${leader},`, 'action', 'notesOpenSettings', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}s`, 'action', 'notesOpenSettings', {}, { context: 'normal' });
   // Support Tab and Shift-Tab in normal mode for indentation
   Vim.map('<Tab>', '>>', 'normal');
   Vim.map('<S-Tab>', '<<', 'normal');

@@ -3,12 +3,10 @@ import { EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { history, indentWithTab } from '@codemirror/commands';
-import { getCM } from '@replit/codemirror-vim';
 import type { VimKeymap } from '../types.ts';
 import {
   createVimExtension,
   setupVimKeymaps,
-  type VimMode,
 } from './vim.ts';
 import {
   livePreviewPlugin,
@@ -29,10 +27,6 @@ export interface EditorProps {
   autosaveDelayMs?: number;
 }
 
-interface VimModeChangeEvent {
-  mode: string;
-  subMode?: string;
-}
 
 export const Editor: React.FC<EditorProps> = ({
   noteId,
@@ -54,8 +48,6 @@ export const Editor: React.FC<EditorProps> = ({
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
-  const [vimMode, setVimMode] = useState<VimMode>('NORMAL');
-  const [subMode, setSubMode] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<string>('Ready');
   const [isLivePreviewActive, setIsLivePreviewActive] = useState<boolean>(livePreview);
 
@@ -211,23 +203,6 @@ export const Editor: React.FC<EditorProps> = ({
     viewRef.current = view;
     view.focus();
 
-    // Hook into Vim adapter mode changes
-    try {
-      const cm = getCM(view);
-      if (cm && typeof cm.on === 'function') {
-        cm.on('vim-mode-change', (data: VimModeChangeEvent) => {
-          const rawMode = (data.mode || 'normal').toUpperCase();
-          if (rawMode === 'INSERT') setVimMode('INSERT');
-          else if (rawMode === 'VISUAL') setVimMode('VISUAL');
-          else if (rawMode === 'REPLACE') setVimMode('REPLACE');
-          else setVimMode('NORMAL');
-
-          setSubMode(data.subMode ? data.subMode.toUpperCase() : '');
-        });
-      }
-    } catch {
-      // Ignore if adapter unavailable
-    }
 
     return () => {
       if (autosaveTimerRef.current) {
@@ -240,14 +215,6 @@ export const Editor: React.FC<EditorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteId, fontSize, fontFamily, lineNumbers, autosave, autosaveDelayMs]);
 
-  const modeBadgeColor =
-    vimMode === 'INSERT'
-      ? 'bg-[#24292e] text-white'
-      : vimMode === 'VISUAL'
-      ? 'bg-[#586069] text-white'
-      : vimMode === 'REPLACE'
-      ? 'bg-[#24292e] text-white'
-      : 'bg-[#24292e] text-white';
 
   return (
     <div className="flex flex-col h-full w-full bg-white overflow-hidden">
@@ -257,31 +224,15 @@ export const Editor: React.FC<EditorProps> = ({
         className="flex-1 w-full overflow-auto"
       />
 
-      {/* Neovim-style Statusline (Typora light style) */}
-      <div className="h-7 bg-[#f6f8fa] border-t border-[#e1e4e8] flex items-center justify-between px-3 text-xs select-none font-mono text-[#586069]">
-        <div className="flex items-center space-x-3">
-          <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider text-[10px] ${modeBadgeColor}`}>
-            {vimMode} {subMode ? `(${subMode})` : ''}
-          </span>
-          <span className="text-[#24292e] font-semibold truncate max-w-sm">
-            {noteId}
-          </span>
-          <span className="text-[#d1d5da]">|</span>
-          <span className="text-[#0366d6] font-medium">{saveStatus}</span>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <button
-            type="button"
-            onClick={() => setIsLivePreviewActive(!isLivePreviewActive)}
-            className="hover:text-[#24292e] transition-colors cursor-pointer"
-            title="Toggle Live Preview vs Raw Markdown"
-          >
-            Mode: <span className={isLivePreviewActive ? 'text-[#2ea44f] font-semibold' : 'text-[#d73a49] font-semibold'}>
-              {isLivePreviewActive ? 'Live Preview' : 'Raw Text'}
-            </span>
-          </button>
-        </div>
+      {/* Discreet Floating Document & Save Status Pill */}
+      <div className="fixed bottom-4 right-5 z-30 flex items-center space-x-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-xs border border-[#e1e4e8] shadow-sm text-xs font-mono select-none pointer-events-auto opacity-60 hover:opacity-100 transition-opacity">
+        <span className="font-semibold text-[#24292e] truncate max-w-[200px]">
+          {noteId}
+        </span>
+        <span className="text-[#d1d5da]">|</span>
+        <span className="text-[#0366d6] font-medium">
+          {saveStatus}
+        </span>
       </div>
     </div>
   );

@@ -25,12 +25,7 @@ import { YaziModal } from './components/YaziModal.tsx';
 import { ExportModal } from './components/ExportModal.tsx';
 import { CheatsheetModal } from './components/CheatsheetModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
-import {
-  FileText,
-  Settings,
-  Share2,
-  HelpCircle,
-} from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -109,6 +104,9 @@ export const App: React.FC = () => {
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault();
         onOpenExplorer();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+        e.preventDefault();
+        onOpenSettings();
       }
     };
 
@@ -248,43 +246,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-white text-[#24292e] overflow-hidden select-none">
-      {/* Minimal Typora-Style Header */}
-      <header className="h-9 bg-[#f6f8fa] border-b border-[#e1e4e8] flex items-center justify-between px-4 select-none shrink-0 text-xs font-sans">
-        <div className="flex items-center space-x-2 truncate">
-          <FileText size={14} className="text-[#24292e]" />
-          <span className="font-semibold text-[#24292e] truncate">
-            {activeNote ? activeNote.id : 'No note open'}
-          </span>
-        </div>
-
-        {/* Minimal Utilities: Export, Cheatsheet, Settings */}
-        <div className="flex items-center space-x-0.5 text-[#586069]">
-          <button
-            type="button"
-            onClick={() => setIsExportOpen(true)}
-            className="p-1.5 rounded hover:bg-[#eaecef] hover:text-[#24292e] transition-colors cursor-pointer"
-            title="Export to Google Docs (<leader>g or :gdoc)"
-          >
-            <Share2 size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsCheatsheetOpen(true)}
-            className="p-1.5 rounded hover:bg-[#eaecef] hover:text-[#24292e] transition-colors cursor-pointer"
-            title="Markdown Cheatsheet (<leader>?)"
-          >
-            <HelpCircle size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded hover:bg-[#eaecef] hover:text-[#24292e] transition-colors cursor-pointer"
-            title="Settings"
-          >
-            <Settings size={14} />
-          </button>
-        </div>
-      </header>
 
       {/* 100% Full-Width Distraction-Free CodeMirror Editor */}
       <main className="flex-1 h-full w-full overflow-hidden flex flex-col bg-white">
