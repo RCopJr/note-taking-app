@@ -9,16 +9,16 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #181825;
-  color: #cdd6f4;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #23272e;
+  color: #abb2bf;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbars */
+/* Custom Scrollbars (Minimal Typora style) */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -26,121 +26,125 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #313244;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #45475a;
+  background: rgba(255, 255, 255, 0.22);
 }
 
-/* CodeMirror 6 Base & Live Preview Typography Styling */
+/* CodeMirror 6 Base & Typora-Inspired Document Styling */
 .cm-editor {
   height: 100%;
-  font-size: 15px;
-  background-color: #181825 !important;
-  color: #cdd6f4 !important;
+  font-size: 16px;
+  background-color: #23272e !important;
+  color: #abb2bf !important;
 }
 
 .cm-editor .cm-scroller {
-  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', monospace;
-  line-height: 1.6;
-  padding: 1.5rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.75;
+  padding: 2rem 0;
 }
 
 .cm-editor .cm-content {
-  padding: 0 2rem;
+  padding: 0 3rem;
   max-width: 860px;
   margin: 0 auto;
 }
 
+/* No line numbers / No gutter (clean Typora page) */
 .cm-editor .cm-gutters {
-  background-color: #181825 !important;
-  color: #585b70 !important;
-  border-right: 1px solid #313244 !important;
-  padding-right: 8px;
-}
-
-.cm-editor .cm-activeLineGutter {
-  background-color: #1e1e2e !important;
-  color: #cdd6f4 !important;
-  font-weight: bold;
+  display: none !important;
 }
 
 .cm-editor .cm-activeLine {
-  background-color: #1e1e2e40 !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
 }
 
 .cm-editor .cm-cursor {
-  border-left-color: #89b4fa !important;
+  border-left-color: #61afef !important;
   border-left-width: 2px !important;
 }
 
-/* Live Preview Decorator Classes */
+/* Selection highlight */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground {
+  background-color: rgba(97, 175, 239, 0.25) !important;
+}
+
+/* Typora-Inspired Live Preview Decorator Classes */
 .cm-lp-h1 {
-  font-size: 1.85rem !important;
+  font-size: 2.1rem !important;
   font-weight: 700 !important;
-  color: #89b4fa !important;
+  color: #e5c07b !important;
   line-height: 1.3 !important;
-  padding-top: 0.75rem;
-  padding-bottom: 0.25rem;
+  padding-top: 1.25rem !important;
+  padding-bottom: 0.35rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
 .cm-lp-h2 {
-  font-size: 1.5rem !important;
+  font-size: 1.6rem !important;
   font-weight: 600 !important;
-  color: #b4befe !important;
+  color: #61afef !important;
   line-height: 1.35 !important;
-  padding-top: 0.6rem;
-  padding-bottom: 0.2rem;
+  padding-top: 1.1rem !important;
+  padding-bottom: 0.25rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .cm-lp-h3 {
-  font-size: 1.25rem !important;
+  font-size: 1.3rem !important;
   font-weight: 600 !important;
-  color: #cba6f7 !important;
+  color: #98c379 !important;
   line-height: 1.4 !important;
-  padding-top: 0.5rem;
+  padding-top: 0.9rem !important;
 }
 
 .cm-lp-h4, .cm-lp-h5, .cm-lp-h6 {
-  font-size: 1.1rem !important;
+  font-size: 1.15rem !important;
   font-weight: 600 !important;
-  color: #f5c2e7 !important;
+  color: #e06c75 !important;
+  padding-top: 0.6rem !important;
 }
 
 .cm-lp-bold {
-  font-weight: 700 !important;
-  color: #f9e2af !important;
+  font-weight: 600 !important;
+  color: #e5c07b !important;
 }
 
 .cm-lp-italic {
   font-style: italic !important;
-  color: #fab387 !important;
+  color: #c678dd !important;
 }
 
 .cm-lp-strikethrough {
   text-decoration: line-through !important;
-  color: #6c7086 !important;
+  color: #5c6370 !important;
 }
 
 .cm-lp-inline-code {
-  background-color: #313244 !important;
-  color: #f38ba8 !important;
-  padding: 0.15rem 0.35rem !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #e06c75 !important;
+  padding: 0.15rem 0.4rem !important;
   border-radius: 4px !important;
-  font-size: 0.9em !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-size: 0.88em !important;
 }
 
 .cm-lp-blockquote {
-  border-left: 3px solid #89b4fa !important;
-  padding-left: 0.85rem !important;
-  color: #a6adc8 !important;
+  border-left: 4px solid #61afef !important;
+  padding: 0.4rem 1rem !important;
+  background-color: rgba(97, 175, 239, 0.05) !important;
+  border-radius: 0 4px 4px 0 !important;
+  color: #7f848e !important;
   font-style: italic !important;
 }
 
 .cm-lp-task-checked {
-  color: #a6adc8 !important;
+  color: #5c6370 !important;
   text-decoration: line-through !important;
 }
 
@@ -154,26 +158,26 @@ body {
 .cm-lp-task-box {
   margin-right: 0.5rem;
   cursor: pointer;
-  accent-color: #89b4fa;
+  accent-color: #61afef;
 }
 
-/* Vim Mode Status Indicators */
+/* Vim Mode Status Indicators (Typora palette) */
 .vim-normal {
-  background-color: #89b4fa;
-  color: #11111b;
+  background-color: #61afef;
+  color: #1e2227;
 }
 
 .vim-insert {
-  background-color: #a6e3a1;
-  color: #11111b;
+  background-color: #98c379;
+  color: #1e2227;
 }
 
 .vim-visual {
-  background-color: #fab387;
-  color: #11111b;
+  background-color: #e5c07b;
+  color: #1e2227;
 }
 
 .vim-replace {
-  background-color: #f38ba8;
-  color: #11111b;
+  background-color: #e06c75;
+  color: #1e2227;
 }

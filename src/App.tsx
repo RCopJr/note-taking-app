@@ -20,7 +20,6 @@ import type {
   TagCount,
 } from './types.ts';
 import { Editor } from './editor/Editor.tsx';
-import { Sidebar } from './components/Sidebar.tsx';
 import { TelescopeModal, type TelescopeMode } from './components/TelescopeModal.tsx';
 import { YaziModal } from './components/YaziModal.tsx';
 import { ExportModal } from './components/ExportModal.tsx';
@@ -28,26 +27,20 @@ import { CheatsheetModal } from './components/CheatsheetModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
 import {
   FileText,
-  Folder,
-  Search,
   Settings,
   Share2,
   HelpCircle,
-  FolderTree,
-  Plus,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [tree, setTree] = useState<FileNode[]>([]);
-  const [tags, setTags] = useState<TagCount[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [, setTags] = useState<TagCount[]>([]);
   const [activeNote, setActiveNote] = useState<NoteDocument | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Modals and Panes: Sidebar defaults to FALSE for distraction-free 100% editor layout
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  // Modals
   const [isExplorerOpen, setIsExplorerOpen] = useState<boolean>(false);
   const [isTelescopeOpen, setIsTelescopeOpen] = useState<boolean>(false);
   const [telescopeMode, setTelescopeMode] = useState<TelescopeMode>('files');
@@ -86,7 +79,7 @@ export const App: React.FC = () => {
     });
   }, [refreshData]);
 
-  // Global event listeners (Vim ex-commands and shortcuts)
+  // Global keyboard listeners and shortcuts
   useEffect(() => {
     const onFindFiles = () => {
       setTelescopeMode('files');
@@ -100,10 +93,6 @@ export const App: React.FC = () => {
 
     const onOpenExplorer = () => {
       setIsExplorerOpen(true);
-    };
-
-    const onToggleSidebar = () => {
-      setIsSidebarOpen((prev) => !prev);
     };
 
     const onExport = () => setIsExportOpen(true);
@@ -120,16 +109,12 @@ export const App: React.FC = () => {
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault();
         onOpenExplorer();
-      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'b' || e.key === 'e')) {
-        e.preventDefault();
-        onToggleSidebar();
       }
     };
 
     window.addEventListener('notes:find-files', onFindFiles);
     window.addEventListener('notes:live-grep', onLiveGrep);
     window.addEventListener('notes:open-explorer', onOpenExplorer);
-    window.addEventListener('notes:toggle-sidebar', onToggleSidebar);
     window.addEventListener('notes:export-gdoc', onExport);
     window.addEventListener('notes:open-cheatsheet', onCheatsheet);
     window.addEventListener('notes:open-settings', onOpenSettings);
@@ -139,7 +124,6 @@ export const App: React.FC = () => {
       window.removeEventListener('notes:find-files', onFindFiles);
       window.removeEventListener('notes:live-grep', onLiveGrep);
       window.removeEventListener('notes:open-explorer', onOpenExplorer);
-      window.removeEventListener('notes:toggle-sidebar', onToggleSidebar);
       window.removeEventListener('notes:export-gdoc', onExport);
       window.removeEventListener('notes:open-cheatsheet', onCheatsheet);
       window.removeEventListener('notes:open-settings', onOpenSettings);
@@ -251,16 +235,11 @@ export const App: React.FC = () => {
     await refreshData();
   };
 
-  // Filter notes by tag if selected
-  const visibleNotes = selectedTag
-    ? notes.filter((n) => n.tags.includes(selectedTag))
-    : notes;
-
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#181825] text-[#89b4fa]">
+      <div className="flex h-screen w-screen items-center justify-center bg-[#23272e] text-[#61afef]">
         <div className="flex flex-col items-center space-y-3 font-mono text-sm">
-          <div className="w-8 h-8 border-2 border-[#89b4fa] border-t-transparent rounded-full animate-spin" />
+          <div className="w-7 h-7 border-2 border-[#61afef] border-t-transparent rounded-full animate-spin" />
           <span>Loading Notes...</span>
         </div>
       </div>
@@ -268,167 +247,71 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#181825] text-[#cdd6f4] overflow-hidden">
-      {/* Top Header Navigation Bar */}
-      <header className="h-11 bg-[#1e1e2e] border-b border-[#313244] flex items-center justify-between px-4 select-none shrink-0">
-        <div className="flex items-center space-x-3">
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-1.5 rounded transition-colors cursor-pointer ${
-              isSidebarOpen
-                ? 'bg-[#313244] text-[#89b4fa]'
-                : 'hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4]'
-            }`}
-            title="Toggle Sidebar (leader e or Cmd+B)"
-          >
-            <FolderTree size={16} />
-          </button>
-          <div className="flex items-center space-x-2 text-sm font-semibold tracking-wide text-[#89b4fa]">
-            <FileText size={18} />
-            <span>VIM NOTES</span>
-            <span className="text-[11px] font-mono font-normal text-[#6c7086] bg-[#181825] px-1.5 py-0.5 rounded border border-[#313244]">
-              {visibleNotes.length}
-            </span>
-          </div>
-          <span className="text-[#45475a]">/</span>
-          <span className="text-xs text-[#a6adc8] font-mono truncate max-w-xs">
-            {activeNote ? activeNote.id : 'No note selected'}
+    <div className="flex flex-col h-screen w-screen bg-[#23272e] text-[#abb2bf] overflow-hidden select-none">
+      {/* Minimal Typora-Style Header */}
+      <header className="h-9 bg-[#1e2227] border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-4 select-none shrink-0 text-xs font-sans">
+        <div className="flex items-center space-x-2 truncate">
+          <FileText size={14} className="text-[#61afef]" />
+          <span className="font-semibold text-[#abb2bf] truncate">
+            {activeNote ? activeNote.id : 'No note open'}
           </span>
         </div>
 
-        {/* Global Action Buttons */}
-        <div className="flex items-center space-x-1">
-          {/* Yazi File Explorer Button */}
-          <button
-            type="button"
-            onClick={() => setIsExplorerOpen(true)}
-            className="flex items-center space-x-1.5 px-2 py-1 text-xs rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
-            title="Open Yazi Explorer (<leader>- or Cmd+O)"
-          >
-            <Folder size={14} className="text-[#89b4fa]" />
-            <span className="font-mono text-[11px] bg-[#181825] px-1 py-0.5 rounded border border-[#313244]">
-              {config?.leaderKey || '<Space>'}-
-            </span>
-          </button>
-
-          {/* New Note Button */}
-          <button
-            type="button"
-            onClick={() => handleCreateNote()}
-            className="flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer mr-1"
-            title="Create New Note"
-          >
-            <Plus size={14} />
-            <span>New Note</span>
-          </button>
-
-          {/* Find Files Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setTelescopeMode('files');
-              setIsTelescopeOpen(true);
-            }}
-            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
-            title="Find Files (<leader>ff or Cmd+P)"
-          >
-            <Search size={14} />
-            <span className="font-mono text-[11px] bg-[#181825] px-1 py-0.5 rounded border border-[#313244]">
-              {config?.leaderKey || '<Space>'}ff
-            </span>
-          </button>
-
-          {/* Live Grep Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setTelescopeMode('grep');
-              setIsTelescopeOpen(true);
-            }}
-            className="flex items-center space-x-1 px-2 py-1 text-xs rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
-            title="Live Grep (<leader>fw or Cmd+Shift+F)"
-          >
-            <Search size={14} className="text-[#fab387]" />
-            <span className="font-mono text-[11px] bg-[#181825] px-1 py-0.5 rounded border border-[#313244]">
-              {config?.leaderKey || '<Space>'}fw
-            </span>
-          </button>
-          {/* Export to Google Docs */}
+        {/* Minimal Utilities: Export, Cheatsheet, Settings */}
+        <div className="flex items-center space-x-0.5 text-[#abb2bf]">
           <button
             type="button"
             onClick={() => setIsExportOpen(true)}
-            className="flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="p-1.5 rounded hover:bg-[rgba(255,255,255,0.06)] hover:text-white transition-colors cursor-pointer"
             title="Export to Google Docs (<leader>g or :gdoc)"
           >
             <Share2 size={14} />
-            <span className="hidden sm:inline">Google Docs</span>
           </button>
-
-          {/* Cheatsheet Modal Button */}
           <button
             type="button"
             onClick={() => setIsCheatsheetOpen(true)}
-            className="p-1.5 rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="p-1.5 rounded hover:bg-[rgba(255,255,255,0.06)] hover:text-white transition-colors cursor-pointer"
             title="Markdown Cheatsheet (<leader>?)"
           >
-            <HelpCircle size={16} />
+            <HelpCircle size={14} />
           </button>
-
-          {/* Settings Modal Button */}
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="p-1.5 rounded hover:bg-[rgba(255,255,255,0.06)] hover:text-white transition-colors cursor-pointer"
             title="Settings"
           >
-            <Settings size={16} />
+            <Settings size={14} />
           </button>
         </div>
       </header>
 
-      {/* Main Workspace Area: Sidebar (Hidden by default for distraction-free mode) + Editor */}
-      <div className="flex-1 w-full overflow-hidden flex">
-        {/* Optional Hierarchical Folder Tree Sidebar */}
-        <Sidebar
-          isOpen={isSidebarOpen}
-          tree={tree}
-          activeNoteId={activeNote?.id || null}
-          tags={tags}
-          selectedTag={selectedTag}
-          onSelectNote={handleSelectNote}
-          onSelectTag={setSelectedTag}
-          onCreateNote={handleCreateNote}
-          onCreateFolder={handleCreateFolder}
-          onDeletePath={handleDeletePath}
-          onResync={refreshData}
-        />
-
-        {/* 100% Full-Width Distraction-Free CodeMirror Editor */}
-        <main className="flex-1 h-full overflow-hidden flex flex-col">
-          {activeNote ? (
-            <Editor
-              key={activeNote.id}
-              noteId={activeNote.id}
-              initialContent={activeNote.content}
-              onSave={handleSave}
-              leaderKey={config?.leaderKey || '<Space>'}
-              customKeymaps={config?.vimKeymaps || []}
-              fontSize={config?.editor.fontSize || 15}
-              fontFamily={config?.editor.fontFamily}
-              lineNumbers={config?.editor.lineNumbers ?? true}
-              livePreview={config?.editor.livePreview ?? true}
-              autosave={config?.editor.autosave ?? true}
-              autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
-            />
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-[#585b70] space-y-2">
-              <FileText size={32} />
-              <span>No note open. Press &lt;Space&gt;- to explore files or &lt;Space&gt;ff to search.</span>
-            </div>
-          )}
-        </main>
-      </div>
+      {/* 100% Full-Width Distraction-Free CodeMirror Editor */}
+      <main className="flex-1 h-full w-full overflow-hidden flex flex-col bg-[#23272e]">
+        {activeNote ? (
+          <Editor
+            key={activeNote.id}
+            noteId={activeNote.id}
+            initialContent={activeNote.content}
+            onSave={handleSave}
+            leaderKey={config?.leaderKey || '<Space>'}
+            customKeymaps={config?.vimKeymaps || []}
+            fontSize={config?.editor.fontSize || 16}
+            fontFamily={config?.editor.fontFamily}
+            lineNumbers={false}
+            livePreview={config?.editor.livePreview ?? true}
+            autosave={config?.editor.autosave ?? true}
+            autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-[#5c6370] space-y-2 font-mono text-xs">
+            <FileText size={28} className="opacity-40" />
+            <span>
+              No note open. Press <kbd className="bg-[#1e2227] px-1.5 py-0.5 rounded text-[#abb2bf] border border-[rgba(255,255,255,0.08)]">&lt;Space&gt;-</kbd> to explore files or <kbd className="bg-[#1e2227] px-1.5 py-0.5 rounded text-[#abb2bf] border border-[rgba(255,255,255,0.08)]">&lt;Space&gt;ff</kbd> to search.
+            </span>
+          </div>
+        )}
+      </main>
 
       {/* Yazi-Style File Explorer Modal */}
       <YaziModal

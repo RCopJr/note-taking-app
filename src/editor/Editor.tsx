@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers as cmLineNumbers, drawSelection } from '@codemirror/view';
+import { EditorView, drawSelection } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { history } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -58,7 +58,6 @@ export const Editor: React.FC<EditorProps> = ({
   const [vimMode, setVimMode] = useState<VimMode>('NORMAL');
   const [subMode, setSubMode] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<string>('Ready');
-  const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
   const [isLivePreviewActive, setIsLivePreviewActive] = useState<boolean>(livePreview);
 
   // Setup Vim custom keymaps and unmap default Space
@@ -161,14 +160,6 @@ export const Editor: React.FC<EditorProps> = ({
     currentNoteIdRef.current = noteId;
 
     const updateListener = EditorView.updateListener.of((update) => {
-      if (update.selectionSet) {
-        const head = update.state.selection.main.head;
-        const line = update.state.doc.lineAt(head);
-        setCursorPos({
-          line: line.number,
-          col: head - line.from + 1,
-        });
-      }
 
       if (update.docChanged) {
         setSaveStatus('Unsaved');
@@ -206,9 +197,6 @@ export const Editor: React.FC<EditorProps> = ({
       }),
     ];
 
-    if (lineNumbers) {
-      extensions.push(cmLineNumbers());
-    }
 
     const state = EditorState.create({
       doc: initialContent,
@@ -293,10 +281,6 @@ export const Editor: React.FC<EditorProps> = ({
               {isLivePreviewActive ? 'Live Preview' : 'Raw Text'}
             </span>
           </button>
-          <span className="text-[#585b70]">|</span>
-          <span>
-            Ln {cursorPos.line}, Col {cursorPos.col}
-          </span>
         </div>
       </div>
     </div>
