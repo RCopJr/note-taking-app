@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
+import { indentUnit } from '@codemirror/language';
 import { history, indentWithTab } from '@codemirror/commands';
 import type { VimKeymap } from '../types.ts';
 import {
@@ -175,6 +176,8 @@ export const Editor: React.FC<EditorProps> = ({
     const extensions = [
       createVimExtension(),
       EditorView.lineWrapping,
+      indentUnit.of('    '),
+      EditorState.tabSize.of(4),
       keymap.of([indentWithTab]),
       drawSelection(),
       history(),
