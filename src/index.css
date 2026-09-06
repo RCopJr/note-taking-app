@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #23272e;
-  color: #abb2bf;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #ffffff;
+  color: #24292e;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbars (Minimal Typora style) */
+/* Custom Scrollbars (Clean Typora light style) */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -26,123 +26,122 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.16);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.28);
 }
 
-/* CodeMirror 6 Base & Typora-Inspired Document Styling */
+/* CodeMirror 6 Base & Typora-Inspired Document Canvas */
 .cm-editor {
   height: 100%;
   font-size: 16px;
-  background-color: #23272e !important;
-  color: #abb2bf !important;
+  background-color: #ffffff !important;
+  color: #24292e !important;
 }
 
 .cm-editor .cm-scroller {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   line-height: 1.75;
-  padding: 2rem 0;
+  padding: 2.5rem 0;
 }
 
 .cm-editor .cm-content {
   padding: 0 3rem;
-  max-width: 860px;
+  max-width: 840px;
   margin: 0 auto;
 }
 
-/* No line numbers / No gutter (clean Typora page) */
+/* No line numbers / No gutter (clean document page) */
 .cm-editor .cm-gutters {
   display: none !important;
 }
 
 .cm-editor .cm-activeLine {
-  background-color: rgba(255, 255, 255, 0.02) !important;
+  background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
 .cm-editor .cm-cursor {
-  border-left-color: #61afef !important;
+  border-left-color: #000000 !important;
   border-left-width: 2px !important;
 }
 
-/* Selection highlight */
+/* Selection highlight (Standard clean text selection) */
 .cm-editor .cm-selectionBackground,
 .cm-editor.cm-focused .cm-selectionBackground {
-  background-color: rgba(97, 175, 239, 0.25) !important;
+  background-color: #cce5ff !important;
 }
 
-/* Typora-Inspired Live Preview Decorator Classes */
+/* Typora Clean Monochrome Live Preview Headings */
 .cm-lp-h1 {
-  font-size: 2.1rem !important;
+  font-size: 2.2rem !important;
   font-weight: 700 !important;
-  color: #e5c07b !important;
-  line-height: 1.3 !important;
-  padding-top: 1.25rem !important;
-  padding-bottom: 0.35rem !important;
+  color: #111111 !important;
+  line-height: 1.25 !important;
+  padding-top: 1.4rem !important;
+  padding-bottom: 0.4rem !important;
 }
 
 .cm-lp-h2 {
-  font-size: 1.6rem !important;
-  font-weight: 600 !important;
-  color: #61afef !important;
-  line-height: 1.35 !important;
-  padding-top: 1.1rem !important;
-  padding-bottom: 0.25rem !important;
+  font-size: 1.65rem !important;
+  font-weight: 700 !important;
+  color: #111111 !important;
+  line-height: 1.3 !important;
+  padding-top: 1.2rem !important;
+  padding-bottom: 0.3rem !important;
 }
 
 .cm-lp-h3 {
-  font-size: 1.3rem !important;
+  font-size: 1.35rem !important;
   font-weight: 600 !important;
-  color: #98c379 !important;
-  line-height: 1.4 !important;
-  padding-top: 0.9rem !important;
+  color: #222222 !important;
+  line-height: 1.35 !important;
+  padding-top: 1rem !important;
 }
 
 .cm-lp-h4, .cm-lp-h5, .cm-lp-h6 {
   font-size: 1.15rem !important;
   font-weight: 600 !important;
-  color: #e06c75 !important;
-  padding-top: 0.6rem !important;
+  color: #333333 !important;
+  padding-top: 0.7rem !important;
 }
 
 .cm-lp-bold {
-  font-weight: 600 !important;
-  color: #e5c07b !important;
+  font-weight: 700 !important;
+  color: #111111 !important;
 }
 
 .cm-lp-italic {
   font-style: italic !important;
-  color: #c678dd !important;
+  color: #24292e !important;
 }
 
 .cm-lp-strikethrough {
   text-decoration: line-through !important;
-  color: #5c6370 !important;
+  color: #8c8c8c !important;
 }
 
 .cm-lp-inline-code {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  color: #e06c75 !important;
-  padding: 0.15rem 0.4rem !important;
+  background-color: #f6f8fa !important;
+  color: #24292e !important;
+  border: 1px solid #e1e4e8 !important;
+  padding: 0.15rem 0.38rem !important;
   border-radius: 4px !important;
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
   font-size: 0.88em !important;
 }
 
 .cm-lp-blockquote {
-  border-left: 4px solid #61afef !important;
-  padding: 0.4rem 1rem !important;
-  background-color: rgba(97, 175, 239, 0.05) !important;
-  border-radius: 0 4px 4px 0 !important;
-  color: #7f848e !important;
+  border-left: 4px solid #dfe2e5 !important;
+  padding: 0.3rem 1rem !important;
+  color: #6a737d !important;
   font-style: italic !important;
 }
 
 .cm-lp-task-checked {
-  color: #5c6370 !important;
+  color: #8c8c8c !important;
   text-decoration: line-through !important;
 }
 
@@ -156,35 +155,35 @@ body {
 .cm-lp-task-box {
   margin-right: 0.5rem;
   cursor: pointer;
-  accent-color: #61afef;
+  accent-color: #24292e;
 }
 
 .cm-lp-bullet {
-  color: #61afef;
-  font-weight: bold;
+  color: #24292e !important;
+  font-weight: 700 !important;
   display: inline-block;
   transform: scale(1.35);
   margin-right: 0.25rem;
   line-height: 1;
 }
 
-/* Vim Mode Status Indicators (Typora palette) */
+/* Vim Mode Status Indicators */
 .vim-normal {
-  background-color: #61afef;
-  color: #1e2227;
+  background-color: #24292e;
+  color: #ffffff;
 }
 
 .vim-insert {
-  background-color: #98c379;
-  color: #1e2227;
+  background-color: #2ea44f;
+  color: #ffffff;
 }
 
 .vim-visual {
-  background-color: #e5c07b;
-  color: #1e2227;
+  background-color: #0366d6;
+  color: #ffffff;
 }
 
 .vim-replace {
-  background-color: #e06c75;
-  color: #1e2227;
+  background-color: #d73a49;
+  color: #ffffff;
 }

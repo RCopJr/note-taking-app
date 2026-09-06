@@ -3,7 +3,6 @@ import { EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { history, indentWithTab } from '@codemirror/commands';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { getCM } from '@replit/codemirror-vim';
 import type { VimKeymap } from '../types.ts';
 import {
@@ -187,7 +186,6 @@ export const Editor: React.FC<EditorProps> = ({
       drawSelection(),
       history(),
       markdown(),
-      oneDark,
       updateListener,
       livePreviewCompartment.of(isLivePreviewActive ? livePreviewPlugin : []),
       EditorView.theme({
@@ -251,34 +249,34 @@ export const Editor: React.FC<EditorProps> = ({
       : 'bg-[#89b4fa] text-[#11111b]';
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#181825] overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-white overflow-hidden">
       {/* CodeMirror 6 Editor Container */}
       <div
         ref={containerRef}
         className="flex-1 w-full overflow-auto"
       />
 
-      {/* Neovim-style Statusline */}
-      <div className="h-7 bg-[#11111b] border-t border-[#313244] flex items-center justify-between px-3 text-xs select-none font-mono text-[#a6adc8]">
+      {/* Neovim-style Statusline (Typora light style) */}
+      <div className="h-7 bg-[#f6f8fa] border-t border-[#e1e4e8] flex items-center justify-between px-3 text-xs select-none font-mono text-[#586069]">
         <div className="flex items-center space-x-3">
           <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider text-[10px] ${modeBadgeColor}`}>
             {vimMode} {subMode ? `(${subMode})` : ''}
           </span>
-          <span className="text-[#cdd6f4] font-medium truncate max-w-sm">
+          <span className="text-[#24292e] font-semibold truncate max-w-sm">
             {noteId}
           </span>
-          <span className="text-[#585b70]">|</span>
-          <span className="text-[#89b4fa]">{saveStatus}</span>
+          <span className="text-[#d1d5da]">|</span>
+          <span className="text-[#0366d6] font-medium">{saveStatus}</span>
         </div>
 
         <div className="flex items-center space-x-4">
           <button
             type="button"
             onClick={() => setIsLivePreviewActive(!isLivePreviewActive)}
-            className="hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="hover:text-[#24292e] transition-colors cursor-pointer"
             title="Toggle Live Preview vs Raw Markdown"
           >
-            Mode: <span className={isLivePreviewActive ? 'text-[#a6e3a1]' : 'text-[#fab387]'}>
+            Mode: <span className={isLivePreviewActive ? 'text-[#2ea44f] font-semibold' : 'text-[#d73a49] font-semibold'}>
               {isLivePreviewActive ? 'Live Preview' : 'Raw Text'}
             </span>
           </button>

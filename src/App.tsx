@@ -237,9 +237,9 @@ export const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#23272e] text-[#61afef]">
-        <div className="flex flex-col items-center space-y-3 font-mono text-sm">
-          <div className="w-7 h-7 border-2 border-[#61afef] border-t-transparent rounded-full animate-spin" />
+        <div className="flex h-screen w-screen items-center justify-center bg-white text-[#24292e]">
+          <div className="flex flex-col items-center space-y-3 font-mono text-sm">
+            <div className="w-7 h-7 border-2 border-[#24292e] border-t-transparent rounded-full animate-spin" />
           <span>Loading Notes...</span>
         </div>
       </div>
@@ -247,22 +247,22 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#23272e] text-[#abb2bf] overflow-hidden select-none">
+    <div className="flex flex-col h-screen w-screen bg-white text-[#24292e] overflow-hidden select-none">
       {/* Minimal Typora-Style Header */}
-      <header className="h-9 bg-[#1e2227] border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-4 select-none shrink-0 text-xs font-sans">
+      <header className="h-9 bg-[#f6f8fa] border-b border-[#e1e4e8] flex items-center justify-between px-4 select-none shrink-0 text-xs font-sans">
         <div className="flex items-center space-x-2 truncate">
-          <FileText size={14} className="text-[#61afef]" />
-          <span className="font-semibold text-[#abb2bf] truncate">
+          <FileText size={14} className="text-[#24292e]" />
+          <span className="font-semibold text-[#24292e] truncate">
             {activeNote ? activeNote.id : 'No note open'}
           </span>
         </div>
 
         {/* Minimal Utilities: Export, Cheatsheet, Settings */}
-        <div className="flex items-center space-x-0.5 text-[#abb2bf]">
+        <div className="flex items-center space-x-0.5 text-[#586069]">
           <button
             type="button"
             onClick={() => setIsExportOpen(true)}
-            className="p-1.5 rounded hover:bg-[rgba(255,255,255,0.06)] hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded hover:bg-[#eaecef] hover:text-[#24292e] transition-colors cursor-pointer"
             title="Export to Google Docs (<leader>g or :gdoc)"
           >
             <Share2 size={14} />
@@ -270,7 +270,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsCheatsheetOpen(true)}
-            className="p-1.5 rounded hover:bg-[rgba(255,255,255,0.06)] hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded hover:bg-[#eaecef] hover:text-[#24292e] transition-colors cursor-pointer"
             title="Markdown Cheatsheet (<leader>?)"
           >
             <HelpCircle size={14} />
@@ -278,7 +278,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded hover:bg-[rgba(255,255,255,0.06)] hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded hover:bg-[#eaecef] hover:text-[#24292e] transition-colors cursor-pointer"
             title="Settings"
           >
             <Settings size={14} />
@@ -287,7 +287,7 @@ export const App: React.FC = () => {
       </header>
 
       {/* 100% Full-Width Distraction-Free CodeMirror Editor */}
-      <main className="flex-1 h-full w-full overflow-hidden flex flex-col bg-[#23272e]">
+      <main className="flex-1 h-full w-full overflow-hidden flex flex-col bg-white">
         {activeNote ? (
           <Editor
             key={activeNote.id}
@@ -304,10 +304,10 @@ export const App: React.FC = () => {
             autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-[#5c6370] space-y-2 font-mono text-xs">
+          <div className="flex-1 flex flex-col items-center justify-center text-[#6a737d] space-y-2 font-mono text-xs">
             <FileText size={28} className="opacity-40" />
             <span>
-              No note open. Press <kbd className="bg-[#1e2227] px-1.5 py-0.5 rounded text-[#abb2bf] border border-[rgba(255,255,255,0.08)]">&lt;Space&gt;-</kbd> to explore files or <kbd className="bg-[#1e2227] px-1.5 py-0.5 rounded text-[#abb2bf] border border-[rgba(255,255,255,0.08)]">&lt;Space&gt;ff</kbd> to search.
+              No note open. Press <kbd className="bg-[#f6f8fa] px-1.5 py-0.5 rounded text-[#24292e] border border-[#e1e4e8]">&lt;Space&gt;-</kbd> to explore files or <kbd className="bg-[#f6f8fa] px-1.5 py-0.5 rounded text-[#24292e] border border-[#e1e4e8]">&lt;Space&gt;ff</kbd> to search.
             </span>
           </div>
         )}
