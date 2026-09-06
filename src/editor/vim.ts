@@ -121,6 +121,10 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
   // Support Tab and Shift-Tab in normal mode for indentation
   Vim.map('<Tab>', '>>', 'normal');
   Vim.map('<S-Tab>', '<<', 'normal');
+
+  // Built-in escape keymaps
+  Vim.map('jk', '<Esc>', 'insert');
+  Vim.map('jj', '<Esc>', 'insert');
   // Register user custom keymaps
   for (const km of customMaps) {
     if (km.before && km.after && km.mode) {

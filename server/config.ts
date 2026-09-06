@@ -34,6 +34,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   leaderKey: '<Space>',
   vimKeymaps: [
     { before: 'jk', after: '<Esc>', mode: 'insert' },
+    { before: 'jj', after: '<Esc>', mode: 'insert' },
   ],
   editor: {
     fontSize: 15,

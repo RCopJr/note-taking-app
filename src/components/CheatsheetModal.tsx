@@ -36,7 +36,7 @@ export const CheatsheetModal: React.FC<CheatsheetModalProps> = ({
     { category: 'Vim Motions & Commands', command: `${leaderKey}e`, description: 'Toggle left sidebar folder tree' },
     { category: 'Vim Motions & Commands', command: `${leaderKey}tr / :raw`, description: 'Toggle Obsidian-style Live Preview vs Raw text' },
     { category: 'Vim Motions & Commands', command: `${leaderKey}?`, description: 'Open this Markdown & Vim cheatsheet' },
-    { category: 'Vim Motions & Commands', command: 'jk or Esc', description: 'Exit Insert mode back to Normal mode' },
+    { category: 'Vim Motions & Commands', command: 'jk or jj or Esc', description: 'Exit Insert mode back to Normal mode' },
     { category: 'Vim Motions & Commands', command: ':w or Cmd+S', description: 'Save current note' },
     { category: 'Vim Motions & Commands', command: 'i / a / o', description: 'Enter Insert mode (at cursor / after / on new line below)' },
     { category: 'Vim Motions & Commands', command: 'dd / yy / p', description: 'Delete line / yank (copy) line / put (paste)' },
