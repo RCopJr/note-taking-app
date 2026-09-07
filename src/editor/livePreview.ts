@@ -78,6 +78,7 @@ const italicDeco = Decoration.mark({ class: 'cm-lp-italic' });
 const strikethroughDeco = Decoration.mark({ class: 'cm-lp-strikethrough' });
 const inlineCodeDeco = Decoration.mark({ class: 'cm-lp-inline-code' });
 
+
 interface RangeItem {
   from: number;
   to: number;
@@ -91,12 +92,14 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
   const selection = view.state.selection.main;
   const cursorLine = view.state.doc.lineAt(selection.head).number;
 
+
   for (const { from, to } of view.visibleRanges) {
     let pos = from;
     while (pos <= to) {
       const line = view.state.doc.lineAt(pos);
       const isCursorOnLine = line.number === cursorLine;
       const text = line.text;
+
       const listMatch = text.match(/^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/);
       let listDepth = 0;
       let isList = false;

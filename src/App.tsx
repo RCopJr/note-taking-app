@@ -42,6 +42,8 @@ export const App: React.FC = () => {
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const leaderHint = config?.leaderKey || '<Space>';
+
 
   // Load all app data from backend
   const refreshData = useCallback(async () => {
@@ -73,6 +75,79 @@ export const App: React.FC = () => {
       setIsLoading(false);
     });
   }, [refreshData]);
+
+  // The editor normally receives leader-key chords through Vim. Keep file
+  // navigation available when the empty state has no editor to receive them.
+  useEffect(() => {
+    if (activeNote) return;
+
+    const configuredLeader = config?.leaderKey || '<Space>';
+    const leaderKey = configuredLeader === '<Space>' ? ' ' : configuredLeader;
+    if (leaderKey.length !== 1) return;
+
+    let commandPrefix: 'leader' | 'find' | null = null;
+    let resetTimer: number | undefined;
+    const resetCommand = () => {
+      commandPrefix = null;
+      if (resetTimer !== undefined) {
+        window.clearTimeout(resetTimer);
+        resetTimer = undefined;
+      }
+    };
+    const armCommandReset = () => {
+      if (resetTimer !== undefined) window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(resetCommand, 1_000);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      if (!commandPrefix) {
+        if (event.key === leaderKey) {
+          event.preventDefault();
+          commandPrefix = 'leader';
+          armCommandReset();
+        }
+        return;
+      }
+
+      if (commandPrefix === 'leader') {
+        if (event.key === '-' || event.key === 'e') {
+          event.preventDefault();
+          resetCommand();
+          setIsExplorerOpen(true);
+        } else if (event.key === 'f') {
+          event.preventDefault();
+          commandPrefix = 'find';
+          armCommandReset();
+        } else {
+          resetCommand();
+        }
+        return;
+      }
+
+      if (event.key === 'f' || event.key === 'w') {
+        event.preventDefault();
+        setTelescopeMode(event.key === 'f' ? 'files' : 'grep');
+        setIsTelescopeOpen(true);
+      }
+      resetCommand();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      resetCommand();
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [activeNote, config?.leaderKey]);
 
   // Global keyboard listeners and shortcuts
   useEffect(() => {
@@ -259,7 +334,6 @@ export const App: React.FC = () => {
             customKeymaps={config?.vimKeymaps || []}
             fontSize={config?.editor.fontSize || 16}
             fontFamily={config?.editor.fontFamily}
-            lineNumbers={false}
             livePreview={config?.editor.livePreview ?? true}
             autosave={config?.editor.autosave ?? true}
             autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
@@ -268,7 +342,7 @@ export const App: React.FC = () => {
           <div className="flex-1 flex flex-col items-center justify-center text-[#6a737d] space-y-2 font-mono text-xs">
             <FileText size={28} className="opacity-40" />
             <span>
-              No note open. Press <kbd className="bg-[#f6f8fa] px-1.5 py-0.5 rounded text-[#24292e] border border-[#e1e4e8]">&lt;Space&gt;-</kbd> to explore files or <kbd className="bg-[#f6f8fa] px-1.5 py-0.5 rounded text-[#24292e] border border-[#e1e4e8]">&lt;Space&gt;ff</kbd> to search.
+              No note open. Press <kbd className="bg-[#f6f8fa] px-1.5 py-0.5 rounded text-[#24292e] border border-[#e1e4e8]">{leaderHint} -</kbd> to explore files or <kbd className="bg-[#f6f8fa] px-1.5 py-0.5 rounded text-[#24292e] border border-[#e1e4e8]">{leaderHint} ff</kbd> to search.
             </span>
           </div>
         )}
