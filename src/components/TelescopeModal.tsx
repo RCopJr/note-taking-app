@@ -165,53 +165,53 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 p-4 sm:pt-20"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-[#1e1e2e] border border-[#313244] rounded-lg shadow-2xl overflow-hidden flex flex-col font-mono"
+        className="w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col font-sans text-sm text-editor-text"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Telescope Header & Mode Tabs */}
-        <div className="flex items-center justify-between px-3 py-2 bg-[#181825] border-b border-[#313244] text-xs">
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-editor-sidebar border-b border-editor-border shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => { setMode('files'); setSelectedIndex(0); }}
-              className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted ${
                 mode === 'files'
-                  ? 'bg-[#89b4fa] text-[#11111b] font-semibold'
-                  : 'text-[#a6adc8] hover:text-[#cdd6f4]'
+                  ? 'bg-editor-active text-editor-accent font-semibold'
+                  : 'text-editor-muted hover:bg-editor-active hover:text-editor-text'
               }`}
             >
-              Find Files (<span className="text-[10px]">Tab</span>)
+              Find Files (<span className="font-mono text-xs">Tab</span>)
             </button>
             <button
               type="button"
               onClick={() => { setMode('grep'); setSelectedIndex(0); }}
-              className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted ${
                 mode === 'grep'
-                  ? 'bg-[#fab387] text-[#11111b] font-semibold'
-                  : 'text-[#a6adc8] hover:text-[#cdd6f4]'
+                  ? 'bg-editor-active text-editor-accent font-semibold'
+                  : 'text-editor-muted hover:bg-editor-active hover:text-editor-text'
               }`}
             >
-              Live Grep FTS5 (<span className="text-[10px]">Tab</span>)
+              Live Grep FTS5 (<span className="font-mono text-xs">Tab</span>)
             </button>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="p-1 rounded hover:bg-editor-active text-editor-muted hover:text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
           >
             <X size={14} />
           </button>
         </div>
 
         {/* Search Input Bar */}
-        <div className="flex items-center px-3 py-2.5 border-b border-[#313244] bg-[#1e1e2e]">
-          <Search size={16} className="text-[#89b4fa] mr-2.5 shrink-0" />
+        <div className="flex items-center px-3 py-2.5 border-b border-editor-border bg-editor-bg shrink-0 focus-within:ring-2 focus-within:ring-inset focus-within:ring-editor-muted">
+          <Search size={16} className="text-editor-muted mr-2.5 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -222,17 +222,17 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                 ? 'Search files or titles by name or tag...'
                 : 'Search document contents across all notes...'
             }
-            className="flex-1 bg-transparent text-sm text-[#cdd6f4] placeholder-[#585b70] focus:outline-none"
+            className="flex-1 min-w-0 bg-transparent text-sm text-editor-text placeholder:text-editor-muted focus:outline-none"
           />
           {isSearching && (
-            <div className="w-4 h-4 border-2 border-[#fab387] border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
+            <div className="w-4 h-4 border-2 border-editor-muted border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
           )}
         </div>
 
         {/* Results List */}
         <div
           ref={listRef}
-          className="max-h-80 overflow-y-auto divide-y divide-[#313244]/40"
+          className="min-h-0 max-h-80 overflow-y-auto divide-y divide-editor-border"
         >
           {mode === 'files' ? (
             fileResults.length > 0 ? (
@@ -246,34 +246,34 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                       onSelectNote(note.id);
                       onClose();
                     }}
-                    className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors text-xs ${
+                    className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors text-sm ${
                       isSelected
-                        ? 'bg-[#313244] text-[#cdd6f4]'
-                        : 'hover:bg-[#181825]/60 text-[#a6adc8]'
+                        ? 'bg-editor-active text-editor-text'
+                        : 'hover:bg-editor-sidebar text-editor-text'
                     }`}
                   >
-                    <div className="flex items-center space-x-2.5 truncate">
+                    <div className="flex min-w-0 items-center space-x-2.5 truncate">
                       <FileText
                         size={14}
-                        className={isSelected ? 'text-[#89b4fa]' : 'text-[#585b70]'}
+                        className={`shrink-0 ${isSelected ? 'text-editor-accent' : 'text-editor-muted'}`}
                       />
-                      <div className="flex flex-col">
-                        <span className={`font-medium truncate ${isSelected ? 'text-[#cdd6f4]' : 'text-[#bac2de]'}`}>
+                      <div className="flex min-w-0 flex-col">
+                        <span className={`truncate ${isSelected ? 'font-semibold' : 'font-medium'}`}>
                           {note.title}
                         </span>
-                        <span className="text-[10px] text-[#6c7086] truncate">
+                        <span className="font-mono text-xs text-editor-muted truncate">
                           {note.path}
                         </span>
                       </div>
                     </div>
 
                     {note.tags.length > 0 && (
-                      <div className="flex items-center space-x-1 shrink-0 ml-3">
-                        <Tag size={10} className="text-[#585b70]" />
+                      <div className="flex max-w-[40%] items-center space-x-1 overflow-hidden shrink-0 ml-3">
+                        <Tag size={12} className="text-editor-muted shrink-0" />
                         {note.tags.slice(0, 3).map((tag) => (
                           <span
                             key={tag}
-                            className="text-[10px] px-1.5 py-0.2 rounded bg-[#181825] border border-[#313244] text-[#a6adc8]"
+                            className="text-xs truncate px-1.5 py-0.5 rounded bg-editor-bg border border-editor-border text-editor-muted"
                           >
                             {tag}
                           </span>
@@ -284,13 +284,13 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                 );
               })
             ) : (
-              <div className="p-8 text-center text-xs text-[#585b70] space-y-2">
+              <div className="p-8 text-center text-sm text-editor-muted space-y-2">
                 <div>No matching files found by title.</div>
                 {query.trim() && (
                   <button
                     type="button"
                     onClick={() => { setMode('grep'); setSelectedIndex(0); }}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#fab387] cursor-pointer transition-colors text-xs mt-1"
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded bg-editor-accent hover:bg-editor-text text-white cursor-pointer transition-colors text-sm mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
                   >
                     <span>Search contents for &quot;{query}&quot; (Press Tab)</span>
                   </button>
@@ -308,22 +308,22 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                       onSelectNote(result.id, query);
                       onClose();
                     }}
-                  className={`flex flex-col px-3 py-2 cursor-pointer transition-colors text-xs ${
+                  className={`flex flex-col px-3 py-2 cursor-pointer transition-colors text-sm ${
                     isSelected
-                      ? 'bg-[#313244] text-[#cdd6f4]'
-                      : 'hover:bg-[#181825]/60 text-[#a6adc8]'
+                      ? 'bg-editor-active text-editor-text'
+                      : 'hover:bg-editor-sidebar text-editor-text'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2 truncate">
                       <FileCode
                         size={14}
-                        className={isSelected ? 'text-[#fab387]' : 'text-[#585b70]'}
+                        className={`shrink-0 ${isSelected ? 'text-editor-accent' : 'text-editor-muted'}`}
                       />
-                      <span className={`font-semibold truncate ${isSelected ? 'text-[#cdd6f4]' : 'text-[#bac2de]'}`}>
+                      <span className={`truncate ${isSelected ? 'font-semibold' : 'font-medium'}`}>
                         {result.title}
                       </span>
-                      <span className="text-[10px] text-[#6c7086]">
+                      <span className="font-mono text-xs text-editor-muted truncate">
                         ({result.id})
                       </span>
                     </div>
@@ -331,31 +331,31 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
 
                   {/* Highlighted Snippet */}
                   <div
-                    className="text-[11px] text-[#a6adc8] bg-[#11111b] px-2 py-1 rounded border border-[#313244]/60 font-mono overflow-hidden truncate [&>mark]:bg-[#fab387]/30 [&>mark]:text-[#fab387] [&>mark]:px-0.5 [&>mark]:rounded"
+                    className="text-sm leading-relaxed text-editor-text bg-editor-bg px-2 py-1 rounded border border-editor-border overflow-hidden truncate [&>mark]:bg-editor-active [&>mark]:text-editor-accent [&>mark]:font-semibold [&>mark]:underline [&>mark]:decoration-editor-muted [&>mark]:underline-offset-2 [&>mark]:px-0.5 [&>mark]:rounded"
                     dangerouslySetInnerHTML={{ __html: result.snippet }}
                   />
                 </div>
               );
             })
           ) : query.trim() ? (
-            <div className="p-8 text-center text-xs text-[#585b70]">
+            <div className="p-8 text-center text-sm text-editor-muted">
               {isSearching ? 'Searching notes...' : 'No grep matches found.'}
             </div>
           ) : (
-            <div className="p-8 text-center text-xs text-[#585b70]">
+            <div className="p-8 text-center text-sm text-editor-muted">
               Type to live-grep across all note contents using SQLite FTS5.
             </div>
           )}
         </div>
 
         {/* Footer Navigation Hints */}
-        <div className="flex items-center justify-between px-3 py-1.5 bg-[#181825] border-t border-[#313244] text-[10px] text-[#6c7086] select-none">
-          <div className="flex items-center space-x-3">
-            <span><kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">↑/↓</kbd> or <kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">Ctrl+j/k</kbd> navigate</span>
-            <span><kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">Enter</kbd> open</span>
-            <span><kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">Tab</kbd> toggle mode</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-editor-sidebar border-t border-editor-border text-xs text-editor-muted select-none shrink-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">↑/↓</kbd> or <kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Ctrl+j/k</kbd> navigate</span>
+            <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Enter</kbd> open</span>
+            <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Tab</kbd> toggle mode</span>
           </div>
-          <span><kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">Esc</kbd> close</span>
+          <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Esc</kbd> close</span>
         </div>
       </div>
     </div>

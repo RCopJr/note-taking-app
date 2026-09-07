@@ -3,7 +3,6 @@ import {
   Folder,
   FileText,
   FileCode,
-  CornerLeftUp,
   AlertTriangle,
   X,
 } from 'lucide-react';
@@ -58,6 +57,8 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   const [itemToDelete, setItemToDelete] = useState<FileNode | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [showHelp, setShowHelp] = useState(false);
+
 
   const listRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -65,6 +66,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   // Focus modal container on open so keyboard navigation works immediately
   useEffect(() => {
     if (isOpen) {
+      setShowHelp(false);
       setTimeout(() => {
         modalRef.current?.focus();
       }, 50);
@@ -272,45 +274,38 @@ export const YaziModal: React.FC<YaziModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-6 font-mono select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 sm:p-6 font-sans text-sm text-editor-text select-none"
       onClick={onClose}
     >
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="w-full max-w-5xl h-[78vh] bg-[#181825] border border-[#313244] rounded-xl shadow-2xl overflow-hidden flex flex-col focus:outline-none relative"
+        className="w-full max-w-5xl h-[78vh] max-h-[calc(100dvh-2rem)] bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Breadcrumbs Bar */}
-        <div className="h-10 bg-[#1e1e2e] border-b border-[#313244] px-4 flex items-center justify-between text-xs">
-          <div className="flex items-center space-x-2 truncate">
-            <span className="font-bold text-[#89b4fa]">YAZI EXPLORER</span>
-            <span className="text-[#585b70]">/</span>
-            <span className="text-[#fab387] font-semibold">~/notes</span>
+        <div className="min-h-10 shrink-0 bg-editor-sidebar border-b border-editor-border px-4 py-2 flex items-center justify-between gap-3 text-sm">
+          <div className="flex min-w-0 items-center space-x-2 truncate">
             {currentPath && (
-              <>
-                <span className="text-[#585b70]">/</span>
-                <span className="text-[#cdd6f4] font-medium truncate">{currentPath}</span>
-              </>
+                <span className="text-editor-text font-mono truncate">{currentPath}</span>
             )}
           </div>
 
-          <div className="flex items-center space-x-2">
-            {currentPath && (
-              <button
-                type="button"
-                onClick={handleAscend}
-                className="flex items-center space-x-1 px-2 py-0.5 rounded hover:bg-[#313244] text-[#a6adc8] hover:text-[#cdd6f4] transition-colors cursor-pointer text-[11px]"
-                title="Go up to parent directory (- or h)"
-              >
-                <CornerLeftUp size={12} />
-                <span>..</span>
-              </button>
-            )}
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowHelp((visible) => !visible)}
+              aria-expanded={showHelp}
+              aria-label={showHelp ? 'Hide keyboard shortcuts' : 'Show keyboard shortcuts'}
+              title={showHelp ? 'Hide keyboard shortcuts' : 'Show keyboard shortcuts'}
+              className="flex h-6 w-6 items-center justify-center rounded border border-editor-border font-mono text-sm text-editor-muted transition-colors hover:bg-editor-active hover:text-editor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
+            >
+              ?
+            </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-1 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+              className="p-1 rounded hover:bg-editor-active text-editor-muted hover:text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
             >
               <X size={15} />
             </button>
@@ -318,10 +313,10 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         </div>
 
         {/* 3-Column Miller Columns Body */}
-        <div className="flex-1 flex overflow-hidden divide-x divide-[#313244]/60">
+        <div className="flex-1 min-h-0 flex overflow-x-auto divide-x divide-editor-border">
           {/* Column 1: Parent Directory Preview (22% width) */}
-          <div className="w-[22%] bg-[#11111b]/40 overflow-y-auto p-2 text-xs divide-y divide-transparent">
-            <div className="text-[10px] uppercase text-[#585b70] font-semibold px-2 py-1 mb-1 tracking-wider">
+          <div className="w-[22%] min-w-36 shrink-0 bg-editor-sidebar overflow-y-auto p-2 text-sm divide-y divide-transparent">
+            <div className="text-xs uppercase text-editor-muted font-semibold px-2 py-1 mb-1 tracking-wider">
               Parent Directory
             </div>
             {parentItems.length > 0 ? (
@@ -334,20 +329,20 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                       setSelectedIndex(0);
                     }
                   }}
-                  className={`flex items-center space-x-2 px-2 py-1 rounded truncate opacity-60 text-[11px] ${
-                    item.path === currentPath ? 'bg-[#313244]/50 opacity-100 text-[#89b4fa] font-bold' : 'hover:opacity-90'
+                  className={`flex items-center space-x-2 px-2 py-1 rounded truncate text-sm transition-colors ${
+                    item.path === currentPath ? 'bg-editor-active text-editor-text font-semibold' : 'text-editor-muted hover:bg-editor-active hover:text-editor-text'
                   }`}
                 >
                   {item.type === 'directory' ? (
-                    <Folder size={12} className="text-[#89b4fa] shrink-0" />
+                    <Folder size={14} className="text-editor-muted shrink-0" />
                   ) : (
-                    <FileText size={12} className="text-[#6c7086] shrink-0" />
+                    <FileText size={14} className="text-editor-muted shrink-0" />
                   )}
                   <span className="truncate">{item.name}</span>
                 </div>
               ))
             ) : (
-              <div className="px-2 py-4 text-center text-[11px] text-[#585b70]">
+              <div className="px-2 py-4 text-center text-sm text-editor-muted">
                 Root of notes
               </div>
             )}
@@ -356,11 +351,11 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           {/* Column 2: Current Directory Active Listing (38% width) */}
           <div
             ref={listRef}
-            className="w-[38%] bg-[#181825] overflow-y-auto p-2 text-xs space-y-0.5"
+            className="w-[38%] min-w-52 shrink-0 bg-editor-bg overflow-y-auto p-2 text-sm space-y-0.5"
           >
-            <div className="text-[10px] uppercase text-[#89b4fa] font-semibold px-2 py-1 mb-1 tracking-wider flex items-center justify-between">
-              <span>{currentPath ? currentPath.split('/').pop() : 'Root'}</span>
-              <span className="text-[#585b70] font-normal">{currentItems.length} items</span>
+            <div className="text-xs uppercase text-editor-muted font-semibold px-2 py-1 mb-1 tracking-wider flex items-center justify-between gap-2">
+              <span className="truncate">{currentPath ? currentPath.split('/').pop() : 'Root'}</span>
+              <span className="text-editor-muted font-normal shrink-0">{currentItems.length} items</span>
             </div>
 
             {currentItems.length > 0 ? (
@@ -382,26 +377,26 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                         setSelectedIndex(0);
                       }
                     }}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer transition-colors text-xs ${
+                    className={`flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer transition-colors text-sm ${
                       isSelected
-                        ? 'bg-[#313244] text-[#cdd6f4] font-semibold'
-                        : 'hover:bg-[#1e1e2e] text-[#a6adc8]'
+                        ? 'bg-editor-active text-editor-text font-semibold'
+                        : 'hover:bg-editor-sidebar text-editor-text'
                     }`}
                   >
                     <div className="flex items-center space-x-2 truncate">
-                      <span className={`w-3 font-bold text-center ${isSelected ? 'text-[#89b4fa]' : 'text-transparent'}`}>
+                      <span className={`w-3 shrink-0 font-mono font-bold text-center ${isSelected ? 'text-editor-accent' : 'text-transparent'}`}>
                         {'>'}
                       </span>
                       {item.type === 'directory' ? (
-                        <Folder size={14} className="text-[#89b4fa] shrink-0" />
+                        <Folder size={14} className="text-editor-muted shrink-0" />
                       ) : (
-                        <FileCode size={14} className={isCurrentActive ? 'text-[#a6e3a1]' : 'text-[#a6adc8] shrink-0'} />
+                        <FileCode size={14} className={`shrink-0 ${isCurrentActive ? 'text-editor-accent stroke-[2.5]' : 'text-editor-muted'}`} />
                       )}
-                      <span className="truncate">{item.name}</span>
+                      <span className={`truncate ${isCurrentActive ? 'underline underline-offset-2' : ''}`}>{item.name}</span>
                     </div>
 
                     {item.size !== undefined && (
-                      <span className="text-[10px] text-[#585b70] shrink-0 ml-2 font-mono">
+                      <span className="text-xs text-editor-muted shrink-0 ml-2 font-mono">
                         {item.size > 1024 ? `${(item.size / 1024).toFixed(1)}k` : `${item.size}b`}
                       </span>
                     )}
@@ -409,55 +404,55 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                 );
               })
             ) : (
-              <div className="p-8 text-center text-xs text-[#585b70] space-y-2">
+              <div className="px-2 py-8 text-center text-sm text-editor-muted space-y-2">
                 <div>(Empty folder)</div>
-                <div className="text-[10px] text-[#45475a]">Press &quot;a&quot; to create a note here</div>
+                <div className="text-sm text-editor-muted">Press &quot;a&quot; to create a note here</div>
               </div>
             )}
           </div>
 
           {/* Column 3: Live Preview Pane (40% width) */}
-          <div className="flex-1 bg-[#11111b]/50 overflow-hidden flex flex-col">
-            <div className="h-8 border-b border-[#313244]/60 px-3 flex items-center justify-between text-[11px] bg-[#1e1e2e]/40">
-              <span className="text-[#6c7086] truncate">
+          <div className="flex-1 min-w-56 bg-editor-bg overflow-hidden flex flex-col">
+            <div className="min-h-8 shrink-0 border-b border-editor-border px-3 py-1 flex items-center justify-between gap-2 text-sm bg-editor-sidebar">
+              <span className="text-editor-muted truncate">
                 {selectedItem ? selectedItem.name : 'Preview'}
               </span>
               {selectedItem?.type === 'file' && (
-                <span className="text-[10px] text-[#89b4fa]">Markdown</span>
+                <span className="text-xs text-editor-muted shrink-0">Markdown</span>
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 text-xs font-mono">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 text-sm">
               {selectedItem?.type === 'directory' ? (
-                <div className="space-y-1 text-xs">
-                  <div className="text-[#89b4fa] font-semibold mb-2">
+                <div className="space-y-1 text-sm">
+                  <div className="text-editor-text font-semibold mb-2">
                     Directory Contents ({selectedItem.children?.length || 0})
                   </div>
                   {selectedItem.children && selectedItem.children.length > 0 ? (
                     selectedItem.children.map((child) => (
-                      <div key={child.path} className="flex items-center space-x-2 text-[#a6adc8] py-0.5">
+                      <div key={child.path} className="flex items-center space-x-2 text-editor-text py-0.5">
                         {child.type === 'directory' ? (
-                          <Folder size={12} className="text-[#89b4fa]" />
+                          <Folder size={14} className="text-editor-muted shrink-0" />
                         ) : (
-                          <FileText size={12} className="text-[#6c7086]" />
+                          <FileText size={14} className="text-editor-muted shrink-0" />
                         )}
                         <span className="truncate">{child.name}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-[#585b70] text-[11px] italic">Empty directory</div>
+                    <div className="text-editor-muted text-sm italic">Empty directory</div>
                   )}
                 </div>
               ) : previewLoading ? (
-                <div className="flex items-center justify-center h-32 text-[#585b70]">
+                <div className="flex items-center justify-center h-32 text-editor-muted">
                   Loading preview...
                 </div>
               ) : previewContent ? (
-                <pre className="text-[11px] leading-relaxed text-[#cdd6f4] whitespace-pre-wrap font-mono">
+                <pre className="text-sm leading-relaxed text-editor-text whitespace-pre-wrap break-words font-mono">
                   {previewContent}
                 </pre>
               ) : (
-                <div className="flex items-center justify-center h-32 text-[#585b70] text-[11px]">
+                <div className="flex items-center justify-center h-32 text-editor-muted text-sm">
                   Select a file to preview
                 </div>
               )}
@@ -465,47 +460,48 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Navigation Key Hints (Yazi style) */}
-        <div className="h-8 bg-[#181825] border-t border-[#313244] px-4 flex items-center justify-between text-[11px] text-[#6c7086]">
-          <div className="flex items-center space-x-3">
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#cdd6f4]">h/l</kbd> parent/open</span>
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#cdd6f4]">j/k</kbd> up/down</span>
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#cdd6f4]">Enter</kbd> open</span>
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#a6e3a1]">a</kbd> new note</span>
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#89b4fa]">A</kbd> new folder</span>
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#fab387]">r</kbd> rename</span>
-            <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#f38ba8]">d</kbd> delete</span>
+        {showHelp && (
+          <div className="shrink-0 bg-editor-sidebar border-t border-editor-border px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs text-editor-muted">
+            <div className="flex flex-wrap items-center gap-3">
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">h/l</kbd> parent/open</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">j/k</kbd> up/down</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">Enter</kbd> open</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">a</kbd> new note</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">A</kbd> new folder</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">r</kbd> rename</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">d</kbd> delete</span>
+            </div>
+            <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">q / Esc</kbd> close</span>
           </div>
-          <span><kbd className="bg-[#313244] px-1.5 py-0.5 rounded text-[#cdd6f4]">q / Esc</kbd> close</span>
-        </div>
+        )}
 
         {/* In-app Deletion Confirmation Dialog Overlay */}
         {itemToDelete && (
           <div
-            className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+            className="absolute inset-0 z-50 bg-black/20 flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#1e1e2e] border border-[#f38ba8]/60 p-5 rounded-xl shadow-2xl max-w-md w-full space-y-4">
-              <div className="flex items-center space-x-2 text-[#f38ba8]">
+            <div className="bg-editor-bg border border-editor-border p-5 rounded-lg shadow-lg max-w-md max-h-full overflow-y-auto w-full space-y-4">
+              <div className="flex items-center space-x-2 text-editor-text">
                 <AlertTriangle size={20} />
                 <h3 className="font-bold text-sm">
                   Delete {itemToDelete.type === 'directory' ? 'Folder' : 'File'}
                 </h3>
               </div>
-              <p className="text-xs text-[#cdd6f4] leading-relaxed">
+              <p className="text-sm text-editor-text leading-relaxed break-words">
                 Are you sure you want to delete {itemToDelete.type}{' '}
-                <span className="font-bold text-[#fab387]">&quot;{itemToDelete.name}&quot;</span>
+                <span className="font-mono font-semibold text-editor-text">&quot;{itemToDelete.name}&quot;</span>
                 {itemToDelete.type === 'directory'
                   ? ' and all of its contents? This cannot be undone.'
                   : '?'}
               </p>
-              <div className="flex justify-end space-x-2 text-xs pt-2">
+              <div className="flex flex-wrap justify-end gap-2 text-sm pt-2">
                 <button
                   type="button"
                   onClick={() => setItemToDelete(null)}
-                  className="px-3 py-1.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded border border-editor-border bg-editor-bg hover:bg-editor-active text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
                 >
-                  Cancel (Esc)
+                  Cancel (<span className="font-mono text-xs">Esc</span>)
                 </button>
                 <button
                   type="button"
@@ -514,9 +510,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                     setItemToDelete(null);
                     await onDeletePath(path);
                   }}
-                  className="px-3 py-1.5 rounded bg-[#f38ba8] hover:bg-[#eba0ac] text-[#11111b] font-bold transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded bg-editor-accent hover:bg-editor-text text-white font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
                 >
-                  Delete (Enter)
+                  Delete (<span className="font-mono text-xs">Enter</span>)
                 </button>
               </div>
             </div>

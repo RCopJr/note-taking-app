@@ -77,47 +77,43 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 font-mono"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 font-sans text-sm text-editor-text"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-[#1e1e2e] border border-[#313244] rounded-lg shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-xl max-h-[85vh] bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#181825] border-b border-[#313244]">
-          <div className="flex items-center space-x-2 text-sm font-semibold text-[#89b4fa]">
-            <Share2 size={16} />
-            <span>Export Note ({noteId})</span>
+        <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3 bg-editor-bg border-b border-editor-border">
+          <div className="flex min-w-0 items-center space-x-2 text-sm font-semibold text-editor-text">
+            <Share2 size={16} className="shrink-0" />
+            <span className="min-w-0 break-words">Export Note (<span className="font-mono">{noteId}</span>)</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="p-1 shrink-0 rounded hover:bg-editor-active text-editor-muted hover:text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Body Content */}
-        <div className="p-4 space-y-4 text-xs">
+        <div className="min-h-0 overflow-y-auto p-4 space-y-4 text-sm">
           {/* Primary Action: Google Docs Rich-Text Clipboard */}
-          <div className="p-3 rounded-lg bg-[#181825] border border-[#313244]">
-            <div className="flex items-center justify-between mb-2">
+          <div className="p-3 rounded-lg bg-editor-sidebar border border-editor-border">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
               <div>
-                <h4 className="font-semibold text-sm text-[#cdd6f4]">Google Docs Clipboard</h4>
-                <p className="text-[#a6adc8] text-[11px] mt-0.5">
-                  Copies formatted HTML directly to your clipboard. Paste into Google Docs with <kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">Cmd+V</kbd>.
+                <h4 className="font-semibold text-sm text-editor-text">Google Docs Clipboard</h4>
+                <p className="text-editor-muted text-sm mt-0.5">
+                  Copies formatted HTML directly to your clipboard. Paste into Google Docs with <kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Cmd+V</kbd>.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleCopyGoogleDocs}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded font-semibold text-xs transition-all cursor-pointer ${
-                  copied
-                    ? 'bg-[#a6e3a1] text-[#11111b]'
-                    : 'bg-[#89b4fa] hover:bg-[#b4befe] text-[#11111b]'
-                }`}
+                className="flex shrink-0 items-center space-x-1.5 px-3 py-1.5 rounded bg-editor-accent hover:bg-editor-text text-white font-semibold text-sm transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
               >
                 {copied ? (
                   <>
@@ -133,7 +129,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </button>
             </div>
             {copied && (
-              <div className="text-[11px] text-[#a6e3a1] font-medium flex items-center space-x-1">
+              <div className="text-sm text-editor-text font-medium flex items-center space-x-1">
                 <Check size={12} />
                 <span>Rich text copied! Switch to Google Docs and press Cmd+V.</span>
               </div>
@@ -142,34 +138,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Secondary Action: File Downloads */}
           <div className="space-y-2">
-            <span className="text-[11px] uppercase tracking-wider text-[#6c7086] font-semibold">
+            <span className="text-sm text-editor-muted font-semibold">
               Download as File
             </span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleDownloadMd}
-                className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded bg-[#181825] hover:bg-[#313244] border border-[#313244] text-[#cdd6f4] transition-colors cursor-pointer"
+                className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded bg-editor-bg hover:bg-editor-active border border-editor-border text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
               >
-                <Download size={13} className="text-[#89b4fa]" />
+                <Download size={13} className="text-editor-muted shrink-0" />
                 <span>Markdown (.md)</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownloadTxt}
-                className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded bg-[#181825] hover:bg-[#313244] border border-[#313244] text-[#cdd6f4] transition-colors cursor-pointer"
+                className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded bg-editor-bg hover:bg-editor-active border border-editor-border text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
               >
-                <FileText size={13} className="text-[#a6adc8]" />
+                <FileText size={13} className="text-editor-muted shrink-0" />
                 <span>Plain Text (.txt)</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownloadHtml}
-                className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded bg-[#181825] hover:bg-[#313244] border border-[#313244] text-[#cdd6f4] transition-colors cursor-pointer"
+                className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded bg-editor-bg hover:bg-editor-active border border-editor-border text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
               >
-                <Code size={13} className="text-[#fab387]" />
+                <Code size={13} className="text-editor-muted shrink-0" />
                 <span>HTML (.html)</span>
               </button>
             </div>
@@ -177,11 +173,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end px-4 py-2 bg-[#181825] border-t border-[#313244] text-xs">
+        <div className="flex shrink-0 items-center justify-end px-4 py-2 bg-editor-bg border-t border-editor-border text-sm">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded bg-editor-bg hover:bg-editor-active border border-editor-border text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
           >
             Close
           </button>

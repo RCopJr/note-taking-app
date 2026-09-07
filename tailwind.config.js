@@ -9,18 +9,18 @@ export default {
     extend: {
       colors: {
         editor: {
-          bg: '#1e1e2e',
-          sidebar: '#181825',
-          active: '#313244',
-          border: '#45475a',
-          text: '#cdd6f4',
-          muted: '#a6adc8',
-          accent: '#89b4fa',
+          bg: '#ffffff',
+          sidebar: '#fafafa',
+          active: '#f0f0f0',
+          border: '#e1e4e8',
+          text: '#24292e',
+          muted: '#666666',
+          accent: '#111111',
         },
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica', 'Arial', 'sans-serif'],
       },
     },
   },

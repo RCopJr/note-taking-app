@@ -43,7 +43,7 @@ body {
 }
 
 .cm-editor .cm-scroller {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace;
   line-height: 1.75;
   padding: 3rem 0 8rem 0;
   display: flex;
@@ -67,9 +67,32 @@ body {
   background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
+/* The active logical line is raw Markdown in a uniform editing font. */
+.cm-editor .cm-lp-editing {
+  font-size: 1em;
+  font-weight: 400;
+  font-style: normal;
+  font-variant-ligatures: none;
+}
+
+/* Insert mode uses CodeMirror's blinking cursor; Vim owns the steady block. */
 .cm-editor .cm-cursor {
-  border-left-color: #000000 !important;
-  border-left-width: 2px !important;
+  border: none !important;
+  width: 1ch;
+  margin-left: 0;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.cm-editor .cm-vimCursorLayer {
+  animation: none !important;
+}
+
+.cm-editor .cm-fat-cursor {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.cm-editor:not(.cm-focused) .cm-fat-cursor {
+  outline: 1px solid #666666;
 }
 
 /* Selection highlight (Standard clean text selection) */
@@ -152,7 +175,7 @@ body {
   border: 1px solid #e1e4e8 !important;
   padding: 0.15rem 0.38rem !important;
   border-radius: 4px !important;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-family: inherit !important;
   font-size: 0.88em !important;
 }
 
@@ -175,8 +198,16 @@ body {
   overflow: hidden !important;
 }
 
+/* Offset continuation rows without moving the raw Markdown prefix. */
+.cm-editor .cm-lp-list {
+  margin-left: var(--cm-list-indent);
+  text-indent: calc(-1 * var(--cm-list-indent));
+}
+
 .cm-lp-task-box {
-  margin-right: 0.5rem;
+  width: 1ch;
+  margin-left: 1ch;
+  margin-right: 1ch;
   cursor: pointer;
   accent-color: #24292e;
 }
@@ -185,9 +216,40 @@ body {
   color: #24292e !important;
   font-weight: 700 !important;
   display: inline-block;
-  transform: scale(1.35);
-  margin-right: 0.25rem;
+  width: 1ch;
+  text-align: center;
+  text-indent: 0;
   line-height: 1;
+}
+
+/* Keep Vim search and command prompts consistent with the document UI. */
+.cm-editor .cm-panels {
+  background-color: #fafafa;
+  color: #24292e;
+}
+
+.cm-editor .cm-panels-bottom {
+  border-top: 1px solid #e1e4e8;
+}
+
+.cm-editor .cm-vim-panel {
+  padding: 0.5rem 1rem;
+  font-size: 14px;
+}
+
+.cm-editor .cm-vim-panel input {
+  color: #24292e;
+  caret-color: #111111;
+}
+
+.cm-editor .cm-vim-panel input:focus-visible {
+  outline: 1px solid #666666;
+  outline-offset: 2px;
+}
+
+.cm-editor .cm-searchMatch {
+  background-color: #e5e5e5;
+  box-shadow: inset 0 -1px #666666;
 }
 
 /* Vim Mode Status Indicators */
@@ -197,16 +259,16 @@ body {
 }
 
 .vim-insert {
-  background-color: #2ea44f;
+  background-color: #444444;
   color: #ffffff;
 }
 
 .vim-visual {
-  background-color: #0366d6;
+  background-color: #666666;
   color: #ffffff;
 }
 
 .vim-replace {
-  background-color: #d73a49;
+  background-color: #111111;
   color: #ffffff;
 }

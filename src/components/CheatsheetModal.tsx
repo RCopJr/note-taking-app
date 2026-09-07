@@ -88,64 +88,64 @@ export const CheatsheetModal: React.FC<CheatsheetModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 font-mono"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 font-sans text-sm text-editor-text"
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
     >
       <div
-        className="w-full max-w-2xl bg-[#1e1e2e] border border-[#313244] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="w-full max-w-2xl bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#181825] border-b border-[#313244]">
-          <div className="flex items-center space-x-2 text-sm font-semibold text-[#89b4fa]">
+        <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3 bg-editor-bg border-b border-editor-border">
+          <div className="flex items-center space-x-2 text-sm font-semibold text-editor-text">
             <HelpCircle size={16} />
             <span>Markdown & Vim Cheatsheet</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            className="p-1 rounded hover:bg-editor-active text-editor-muted hover:text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Search Bar */}
-        <div className="flex items-center px-4 py-2 bg-[#1e1e2e] border-b border-[#313244]">
-          <Search size={15} className="text-[#89b4fa] mr-2" />
+        <div className="flex shrink-0 items-center px-4 py-2 bg-editor-bg border-b border-editor-border focus-within:ring-2 focus-within:ring-inset focus-within:ring-editor-muted">
+          <Search size={15} className="text-editor-muted mr-2 shrink-0" />
           <input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search commands, syntax, shortcuts..."
-            className="w-full bg-transparent text-xs text-[#cdd6f4] placeholder-[#585b70] focus:outline-none"
+            className="w-full min-w-0 bg-transparent py-1 text-sm text-editor-text placeholder-editor-muted focus:outline-none"
             autoFocus
           />
         </div>
 
         {/* List of shortcuts & syntax */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5 text-sm">
           {Object.entries(grouped).length > 0 ? (
             Object.entries(grouped).map(([category, catItems]) => (
               <div key={category} className="space-y-2">
-                <h4 className="text-[11px] uppercase tracking-wider font-semibold text-[#89b4fa]">
+                <h4 className="text-sm font-semibold text-editor-muted">
                   {category}
                 </h4>
-                <div className="grid grid-cols-1 gap-1.5 bg-[#181825] p-2.5 rounded-lg border border-[#313244]/60">
+                <div className="grid grid-cols-1 gap-1.5 bg-editor-sidebar p-2.5 rounded-lg border border-editor-border">
                   {catItems.map((ci) => (
                     <div
                       key={ci.command}
-                      className="flex items-start justify-between py-1 px-1.5 hover:bg-[#313244]/40 rounded transition-colors"
+                      className="flex flex-col sm:flex-row items-start justify-between gap-2 py-2 px-1.5 hover:bg-editor-active rounded transition-colors"
                     >
-                      <div className="flex flex-col space-y-0.5">
-                        <span className="font-semibold text-[#fab387]">{ci.command}</span>
-                        <span className="text-[#a6adc8] text-[11px]">{ci.description}</span>
+                      <div className="flex min-w-0 flex-col space-y-1">
+                        <span className="font-mono font-semibold text-editor-text break-words">{ci.command}</span>
+                        <span className="text-editor-muted text-sm">{ci.description}</span>
                       </div>
                       {ci.example && (
-                        <code className="text-[10px] bg-[#11111b] px-1.5 py-0.5 rounded text-[#a6e3a1] border border-[#313244]/40 shrink-0 ml-3">
+                        <code className="max-w-full sm:max-w-[45%] font-mono text-sm whitespace-pre-wrap break-words bg-editor-bg px-1.5 py-0.5 rounded text-editor-text border border-editor-border shrink-0">
                           {ci.example}
                         </code>
                       )}
@@ -155,19 +155,19 @@ export const CheatsheetModal: React.FC<CheatsheetModalProps> = ({
               </div>
             ))
           ) : (
-            <div className="p-8 text-center text-[#585b70]">
+            <div className="p-8 text-center text-editor-muted">
               No matching cheatsheet items found.
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2 bg-[#181825] border-t border-[#313244] text-[10px] text-[#6c7086]">
-          <span>Press <kbd className="bg-[#313244] px-1 py-0.5 rounded text-[#cdd6f4]">Esc</kbd> to close</span>
+        <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2 bg-editor-bg border-t border-editor-border text-sm text-editor-muted">
+          <span>Press <kbd className="font-mono bg-editor-sidebar border border-editor-border px-1 py-0.5 rounded text-editor-text">Esc</kbd> to close</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-2.5 py-1 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer text-xs"
+            className="px-3 py-1.5 rounded bg-editor-accent hover:bg-editor-text text-white transition-colors cursor-pointer text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
           >
             Done
           </button>

@@ -6,7 +6,8 @@ import {
   type ViewUpdate,
   WidgetType,
 } from '@codemirror/view';
-import { RangeSetBuilder, Compartment } from '@codemirror/state';
+import { RangeSetBuilder, Compartment, countColumn } from '@codemirror/state';
+import { syntaxTree } from '@codemirror/language';
 
 export const livePreviewCompartment = new Compartment();
 
@@ -43,15 +44,19 @@ class CheckboxWidget extends WidgetType {
 }
 
 class BulletWidget extends WidgetType {
+  constructor(private readonly depth: number) {
+    super();
+  }
+
   toDOM(): HTMLElement {
     const span = document.createElement('span');
     span.className = 'cm-lp-bullet';
-    span.textContent = '•';
+    span.textContent = ['•', '◦', '▪'][this.depth % 3];
     return span;
   }
 
-  eq(): boolean {
-    return true;
+  eq(other: BulletWidget): boolean {
+    return this.depth === other.depth;
   }
 }
 
@@ -65,6 +70,7 @@ const headingDecorations: Record<number, Decoration> = {
   6: Decoration.line({ class: 'cm-lp-h6' }),
 };
 
+const editingLineDeco = Decoration.line({ class: 'cm-lp-editing' });
 const blockquoteLineDeco = Decoration.line({ class: 'cm-lp-blockquote' });
 const hiddenSyntaxDeco = Decoration.mark({ class: 'cm-lp-hidden-syntax' });
 const boldDeco = Decoration.mark({ class: 'cm-lp-bold' });
@@ -91,6 +97,37 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
       const line = view.state.doc.lineAt(pos);
       const isCursorOnLine = line.number === cursorLine;
       const text = line.text;
+      const listMatch = text.match(/^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/);
+      let listDepth = 0;
+      let isList = false;
+      if (listMatch) {
+        const marker = syntaxTree(view.state).resolveInner(
+          line.from + listMatch[1].length, 1
+        );
+        isList = marker.name === 'ListMark';
+        if (isList) {
+          for (let node = marker.parent; node; node = node.parent) {
+            if (node.name === 'ListItem') listDepth++;
+          }
+          const columns = countColumn(listMatch[0], view.state.tabSize);
+          lineDecos.push({
+            from: line.from,
+            to: line.from,
+            value: Decoration.line({
+              class: 'cm-lp-list',
+              attributes: { style: `--cm-list-indent: ${columns}ch` },
+            }),
+          });
+        }
+      }
+
+      if (isCursorOnLine) {
+        lineDecos.push({
+          from: line.from,
+          to: line.from,
+          value: editingLineDeco,
+        });
+      }
 
       // Only apply rich transformations when cursor is NOT on this line
       if (!isCursorOnLine && text.length > 0) {
@@ -128,7 +165,7 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
 
         // 3. Task lists or standard bullet lists
         const taskMatch = text.match(/^(\s*[-*+]\s+)\[([ xX])\]\s+/);
-        if (taskMatch) {
+        if (isList && taskMatch) {
           const prefixLen = taskMatch[1].length;
           const boxPos = line.from + prefixLen + 1; // position of ' ' or 'x'
           const isChecked = taskMatch[2].toLowerCase() === 'x';
@@ -143,14 +180,14 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
         } else {
           // 3b. Standard Bullet lists: - item, * item, + item
           const bulletMatch = text.match(/^(\s*)([-*+])(\s+)/);
-          if (bulletMatch && bulletMatch[2]) {
+          if (isList && bulletMatch && bulletMatch[2]) {
             const indentLen = bulletMatch[1].length;
             const bulletStart = line.from + indentLen;
             markDecos.push({
               from: bulletStart,
               to: bulletStart + 1,
               value: Decoration.replace({
-                widget: new BulletWidget(),
+                widget: new BulletWidget(Math.max(0, listDepth - 1)),
               }),
             });
           }
@@ -229,7 +266,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
       if (
         update.docChanged ||
         update.viewportChanged ||
-        update.selectionSet
+        update.selectionSet ||
+        syntaxTree(update.startState) !== syntaxTree(update.state)
       ) {
         this.decorations = buildLivePreviewDecorations(update.view);
       }

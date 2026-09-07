@@ -233,7 +233,7 @@ export const Editor: React.FC<EditorProps> = ({
           {noteId}
         </span>
         <span className="text-[#d1d5da]">|</span>
-        <span className="text-[#0366d6] font-medium">
+        <span className="text-editor-muted font-medium">
           {saveStatus}
         </span>
       </div>

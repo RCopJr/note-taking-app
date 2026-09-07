@@ -103,37 +103,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 font-mono"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 font-sans text-sm text-editor-text"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-[#1e1e2e] border border-[#313244] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="w-full max-w-2xl bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col max-h-[85dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#181825] border-b border-[#313244]">
-          <div className="flex items-center space-x-2 text-sm font-semibold text-[#89b4fa]">
+        <div className="flex shrink-0 items-center justify-between px-4 py-3 bg-editor-sidebar border-b border-editor-border">
+          <div className="flex items-center space-x-2 text-sm font-semibold text-editor-text">
             <Settings size={16} />
             <span>Preferences & Settings</span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors cursor-pointer"
+            aria-label="Close settings"
+            className="p-1 rounded hover:bg-editor-active text-editor-muted hover:text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-sidebar"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center px-4 pt-2 bg-[#181825] border-b border-[#313244] text-xs space-x-2">
+        <div className="flex shrink-0 items-center overflow-x-auto px-4 pt-2 bg-editor-sidebar border-b border-editor-border text-sm space-x-2">
           <button
             type="button"
             onClick={() => setActiveTab('general')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editor-accent ${
               activeTab === 'general'
-                ? 'border-[#89b4fa] text-[#89b4fa]'
-                : 'border-transparent text-[#a6adc8] hover:text-[#cdd6f4]'
+                ? 'border-editor-accent bg-editor-active text-editor-text'
+                : 'border-transparent text-editor-muted hover:bg-editor-active hover:text-editor-text'
             }`}
           >
             <Folder size={13} />
@@ -142,10 +143,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('editor')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editor-accent ${
               activeTab === 'editor'
-                ? 'border-[#89b4fa] text-[#89b4fa]'
-                : 'border-transparent text-[#a6adc8] hover:text-[#cdd6f4]'
+                ? 'border-editor-accent bg-editor-active text-editor-text'
+                : 'border-transparent text-editor-muted hover:bg-editor-active hover:text-editor-text'
             }`}
           >
             <Sliders size={13} />
@@ -154,10 +155,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('keymaps')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editor-accent ${
               activeTab === 'keymaps'
-                ? 'border-[#89b4fa] text-[#89b4fa]'
-                : 'border-transparent text-[#a6adc8] hover:text-[#cdd6f4]'
+                ? 'border-editor-accent bg-editor-active text-editor-text'
+                : 'border-transparent text-editor-muted hover:bg-editor-active hover:text-editor-text'
             }`}
           >
             <Keyboard size={13} />
@@ -166,11 +167,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tab Body */}
-        <div className="flex-1 overflow-y-auto p-4 text-xs space-y-4">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 text-sm space-y-4">
           {activeTab === 'general' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[#a6adc8] font-semibold block">
+                <label className="text-editor-text font-semibold block">
                   Notes Storage Directory
                 </label>
                 <input
@@ -178,15 +179,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   value={notesDir}
                   onChange={(e) => setNotesDir(e.target.value)}
                   placeholder="~/notes"
-                  className="w-full bg-[#181825] border border-[#313244] rounded px-3 py-1.5 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                  className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 font-mono text-editor-text placeholder:text-editor-muted focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                 />
-                <p className="text-[11px] text-[#6c7086]">
+                <p className="text-sm text-editor-muted">
                   Source of truth directory on your machine. Files are plain .md and .txt indexed automatically.
                 </p>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#a6adc8] font-semibold block">
+                <label className="text-editor-text font-semibold block">
                   Leader Key
                 </label>
                 <input
@@ -194,9 +195,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   value={leaderKey}
                   onChange={(e) => setLeaderKey(e.target.value)}
                   placeholder="<Space>"
-                  className="w-32 bg-[#181825] border border-[#313244] rounded px-3 py-1.5 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                  className="w-32 bg-editor-bg border border-editor-border rounded px-3 py-1.5 font-mono text-editor-text placeholder:text-editor-muted focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                 />
-                <p className="text-[11px] text-[#6c7086]">
+                <p className="text-sm text-editor-muted">
                   Prefix for Telescope commands (e.g. &lt;Space&gt;ff, &lt;Space&gt;fw, &lt;Space&gt;g).
                 </p>
               </div>
@@ -205,21 +206,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'editor' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[#a6adc8] font-semibold block">Font Size (px)</label>
+                  <label className="text-editor-text font-semibold block">Font Size (px)</label>
                   <input
                     type="number"
                     min={11}
                     max={28}
                     value={fontSize}
                     onChange={(e) => setFontSize(parseInt(e.target.value, 10) || 15)}
-                    className="w-full bg-[#181825] border border-[#313244] rounded px-3 py-1.5 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                    className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[#a6adc8] font-semibold block">Autosave Delay (ms)</label>
+                  <label className="text-editor-text font-semibold block">Autosave Delay (ms)</label>
                   <input
                     type="number"
                     min={200}
@@ -227,30 +228,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     step={100}
                     value={autosaveDelayMs}
                     onChange={(e) => setAutosaveDelayMs(parseInt(e.target.value, 10) || 500)}
-                    className="w-full bg-[#181825] border border-[#313244] rounded px-3 py-1.5 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                    className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[#a6adc8] font-semibold block">Font Family</label>
+                <label className="text-editor-text font-semibold block">Font Family</label>
                 <input
                   type="text"
                   value={fontFamily}
                   onChange={(e) => setFontFamily(e.target.value)}
-                  className="w-full bg-[#181825] border border-[#313244] rounded px-3 py-1.5 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                  className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                 />
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-[#313244]/60">
+              <div className="space-y-2 pt-2 border-t border-editor-border">
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={lineNumbers}
                     onChange={(e) => setLineNumbers(e.target.checked)}
-                    className="accent-[#89b4fa]"
+                    className="h-4 w-4 shrink-0 accent-editor-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-bg"
                   />
-                  <span className="text-[#cdd6f4]">Display Line Numbers</span>
+                  <span className="text-editor-text">Display Line Numbers</span>
                 </label>
 
                 <label className="flex items-center space-x-2 cursor-pointer">
@@ -258,9 +259,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="checkbox"
                     checked={livePreview}
                     onChange={(e) => setLivePreview(e.target.checked)}
-                    className="accent-[#89b4fa]"
+                    className="h-4 w-4 shrink-0 accent-editor-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-bg"
                   />
-                  <span className="text-[#cdd6f4]">Enable Obsidian-Style Live Preview by default</span>
+                  <span className="text-editor-text">Enable Obsidian-Style Live Preview by default</span>
                 </label>
 
                 <label className="flex items-center space-x-2 cursor-pointer">
@@ -268,9 +269,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="checkbox"
                     checked={autosave}
                     onChange={(e) => setAutosave(e.target.checked)}
-                    className="accent-[#89b4fa]"
+                    className="h-4 w-4 shrink-0 accent-editor-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-bg"
                   />
-                  <span className="text-[#cdd6f4]">Enable continuous debounced autosave</span>
+                  <span className="text-editor-text">Enable continuous debounced autosave</span>
                 </label>
               </div>
             </div>
@@ -278,14 +279,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'keymaps' && (
             <div className="space-y-4">
-              <p className="text-[11px] text-[#a6adc8]">
-                Custom Vim key remappings stored in <code className="bg-[#181825] px-1 py-0.5 rounded text-[#89b4fa]">~/.config/notes/config.json</code>.
+              <p className="text-sm text-editor-muted">
+                Custom Vim key remappings stored in <code className="bg-editor-active px-1 py-0.5 rounded font-mono text-editor-text break-all">~/.config/notes/config.json</code>.
               </p>
 
               {/* Existing Keymaps Table */}
-              <div className="border border-[#313244] rounded overflow-hidden">
+              <div className="border border-editor-border rounded overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-[#181825] text-[#6c7086] text-[10px] uppercase">
+                  <thead className="bg-editor-sidebar text-editor-muted text-sm">
                     <tr>
                       <th className="py-1.5 px-3">Before</th>
                       <th className="py-1.5 px-3">After</th>
@@ -293,17 +294,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <th className="py-1.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#313244]/50">
+                  <tbody className="divide-y divide-editor-border">
                     {keymaps.map((km, idx) => (
-                      <tr key={`${km.before}-${km.after}-${km.mode}`} className="hover:bg-[#313244]/20">
-                        <td className="py-1.5 px-3 font-semibold text-[#fab387]">{km.before}</td>
-                        <td className="py-1.5 px-3 text-[#a6e3a1]">{km.after}</td>
-                        <td className="py-1.5 px-3 text-[#a6adc8] uppercase text-[10px]">{km.mode}</td>
+                      <tr key={`${km.before}-${km.after}-${km.mode}`} className="hover:bg-editor-active">
+                        <td className="py-1.5 px-3 font-mono font-semibold text-editor-text break-all">{km.before}</td>
+                        <td className="py-1.5 px-3 font-mono text-editor-text break-all">{km.after}</td>
+                        <td className="py-1.5 px-3 text-editor-muted">{km.mode}</td>
                         <td className="py-1.5 px-3 text-right">
                           <button
                             type="button"
                             onClick={() => handleRemoveKeymap(idx)}
-                            className="text-[#6c7086] hover:text-[#f38ba8] p-1 cursor-pointer"
+                            className="text-editor-muted hover:text-editor-text hover:bg-editor-active rounded p-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent"
                             title="Remove keymap"
                           >
                             <Trash2 size={12} />
@@ -313,7 +314,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                     {keymaps.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-4 text-center text-[#585b70]">
+                        <td colSpan={4} className="py-4 text-center text-editor-muted">
                           No custom keymaps registered.
                         </td>
                       </tr>
@@ -323,29 +324,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Add New Keymap Form */}
-              <div className="p-3 bg-[#181825] rounded border border-[#313244] space-y-2">
-                <span className="text-[11px] font-semibold text-[#89b4fa] block">
+              <div className="p-3 bg-editor-sidebar rounded border border-editor-border space-y-2">
+                <span className="text-sm font-semibold text-editor-text block">
                   Add Custom Keymap
                 </span>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   <input
                     type="text"
                     placeholder="Before (e.g. jk)"
                     value={newBefore}
                     onChange={(e) => setNewBefore(e.target.value)}
-                    className="bg-[#11111b] border border-[#313244] rounded px-2.5 py-1 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                    className="min-w-0 bg-editor-bg border border-editor-border rounded px-2.5 py-1.5 font-mono text-editor-text placeholder:text-editor-muted focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                   />
                   <input
                     type="text"
                     placeholder="After (e.g. <Esc>)"
                     value={newAfter}
                     onChange={(e) => setNewAfter(e.target.value)}
-                    className="bg-[#11111b] border border-[#313244] rounded px-2.5 py-1 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                    className="min-w-0 bg-editor-bg border border-editor-border rounded px-2.5 py-1.5 font-mono text-editor-text placeholder:text-editor-muted focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                   />
                   <select
                     value={newMode}
                     onChange={(e) => setNewMode(e.target.value as 'normal' | 'insert' | 'visual')}
-                    className="bg-[#11111b] border border-[#313244] rounded px-2 py-1 text-[#cdd6f4] focus:outline-none focus:border-[#89b4fa]"
+                    className="min-w-0 bg-editor-bg border border-editor-border rounded px-2 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                   >
                     <option value="insert">insert</option>
                     <option value="normal">normal</option>
@@ -354,7 +355,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     type="button"
                     onClick={handleAddKeymap}
-                    className="flex items-center justify-center space-x-1 px-3 py-1 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] font-medium transition-colors cursor-pointer"
+                    className="flex items-center justify-center space-x-1 px-3 py-1.5 rounded border border-editor-border bg-editor-bg hover:bg-editor-active text-editor-text font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-sidebar"
                   >
                     <Plus size={13} />
                     <span>Add</span>
@@ -366,13 +367,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-[#181825] border-t border-[#313244] text-xs">
-          <span className="text-[#a6e3a1] font-medium">{saveMessage}</span>
-          <div className="flex items-center space-x-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-editor-sidebar border-t border-editor-border text-sm">
+          <span className="min-w-0 break-words text-editor-text font-medium" role="status" aria-live="polite">{saveMessage}</span>
+          <div className="ml-auto flex shrink-0 items-center space-x-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded bg-[#313244] hover:bg-[#45475a] text-[#cdd6f4] transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded border border-editor-border bg-editor-bg hover:bg-editor-active text-editor-text transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-sidebar"
             >
               Cancel
             </button>
@@ -380,7 +381,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="button"
               onClick={handleSaveAll}
               disabled={isSaving}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded bg-[#89b4fa] hover:bg-[#b4befe] text-[#11111b] font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-editor-accent bg-editor-accent hover:bg-editor-text text-white font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-sidebar disabled:cursor-not-allowed disabled:border-editor-border disabled:bg-editor-active disabled:text-editor-muted"
             >
               <Save size={13} />
               <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
