@@ -5,6 +5,8 @@ import type {
   NoteDocument,
   FtsSearchResult,
   TagCount,
+  BibleStatus,
+  BiblePassage,
 } from './types.ts';
 
 const BASE_URL = '/api';
@@ -37,6 +39,20 @@ export async function updateConfig(updates: Partial<AppConfig>): Promise<AppConf
     body: JSON.stringify(updates),
   });
   return handleResponse<AppConfig>(res);
+}
+
+export async function fetchBibleStatus(): Promise<BibleStatus> {
+  const res = await fetch(`${BASE_URL}/bible/status`);
+  return handleResponse<BibleStatus>(res);
+}
+
+export async function fetchBiblePassage(
+  reference: string,
+  version: string,
+): Promise<BiblePassage> {
+  const params = new URLSearchParams({ reference, version });
+  const res = await fetch(`${BASE_URL}/bible/passage?${params}`);
+  return handleResponse<BiblePassage>(res);
 }
 
 export async function fetchTree(): Promise<FileNode[]> {

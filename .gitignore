@@ -6,3 +6,6 @@ dist
 *.db-shm
 tsconfig.tsbuildinfo
 dev
+.env
+.env.*
+!.env.example

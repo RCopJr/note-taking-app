@@ -41,11 +41,16 @@ export interface EditorSettings {
   livePreview: boolean;
 }
 
+export interface BibleSettings {
+  defaultVersion: 'ESV';
+}
+
 export interface AppConfig {
   notesDir: string;
   leaderKey: string;
   vimKeymaps: VimKeymap[];
   editor: EditorSettings;
+  bible: BibleSettings;
 }
 
 export interface FtsSearchResult {
@@ -59,4 +64,16 @@ export interface FtsSearchResult {
 export interface TagCount {
   tag: string;
   count: number;
+}
+
+export interface BibleStatus {
+  configured: boolean;
+  supportedVersions: readonly string[];
+}
+
+export interface BiblePassage {
+  reference: string;
+  canonical: string;
+  version: 'ESV';
+  text: string;
 }

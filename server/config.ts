@@ -17,11 +17,16 @@ export interface EditorSettings {
   livePreview: boolean;
 }
 
+export interface BibleSettings {
+  defaultVersion: 'ESV';
+}
+
 export interface AppConfig {
   notesDir: string;
   leaderKey: string;
   vimKeymaps: VimKeymap[];
   editor: EditorSettings;
+  bible: BibleSettings;
 }
 
 const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.config', 'notes');
@@ -43,6 +48,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     autosave: true,
     autosaveDelayMs: 500,
     livePreview: true,
+  },
+  bible: {
+    defaultVersion: 'ESV',
   },
 };
 
@@ -68,6 +76,10 @@ export async function loadConfig(cliNotesDir?: string): Promise<AppConfig> {
         ...DEFAULT_CONFIG.editor,
         ...(parsed.editor || {}),
       },
+      bible: {
+        ...DEFAULT_CONFIG.bible,
+        ...(parsed.bible || {}),
+      },
       vimKeymaps: Array.isArray(parsed.vimKeymaps) ? parsed.vimKeymaps : DEFAULT_CONFIG.vimKeymaps,
     };
   } catch {
@@ -92,6 +104,10 @@ export async function saveConfig(updates: Partial<AppConfig>): Promise<AppConfig
     editor: {
       ...current.editor,
       ...(updates.editor || {}),
+    },
+    bible: {
+      ...current.bible,
+      ...(updates.bible || {}),
     },
     vimKeymaps: updates.vimKeymaps || current.vimKeymaps,
   };

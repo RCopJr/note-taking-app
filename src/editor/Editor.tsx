@@ -13,6 +13,7 @@ import {
   livePreviewPlugin,
   livePreviewCompartment,
 } from './livePreview.ts';
+import { createBiblePreviewExtension } from './biblePreview.ts';
 
 export interface EditorProps {
   noteId: string;
@@ -26,6 +27,7 @@ export interface EditorProps {
   livePreview?: boolean;
   autosave?: boolean;
   autosaveDelayMs?: number;
+  defaultBibleVersion?: string;
 }
 
 
@@ -41,6 +43,7 @@ export const Editor: React.FC<EditorProps> = ({
   livePreview = true,
   autosave = true,
   autosaveDelayMs = 500,
+  defaultBibleVersion = 'ESV',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -134,10 +137,12 @@ export const Editor: React.FC<EditorProps> = ({
     if (!viewRef.current) return;
     viewRef.current.dispatch({
       effects: livePreviewCompartment.reconfigure(
-        isLivePreviewActive ? livePreviewPlugin : []
+        isLivePreviewActive
+          ? [livePreviewPlugin, createBiblePreviewExtension(defaultBibleVersion)]
+          : []
       ),
     });
-  }, [isLivePreviewActive]);
+  }, [defaultBibleVersion, isLivePreviewActive]);
 
   // Initialize CodeMirror 6 Editor ONLY when noteId changes or on mount
   useEffect(() => {
@@ -183,7 +188,11 @@ export const Editor: React.FC<EditorProps> = ({
       history(),
       markdown(),
       updateListener,
-      livePreviewCompartment.of(isLivePreviewActive ? livePreviewPlugin : []),
+      livePreviewCompartment.of(
+        isLivePreviewActive
+          ? [livePreviewPlugin, createBiblePreviewExtension(defaultBibleVersion)]
+          : []
+      ),
       EditorView.theme({
         '&': {
           fontSize: `${fontSize}px`,

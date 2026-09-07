@@ -13,6 +13,11 @@ import {
   getAllTags,
 } from './db.ts';
 import { LocalFileStorageProvider } from './storage.ts';
+import {
+  BiblePassageError,
+  fetchBiblePassage,
+  getBibleStatus,
+} from './bible.ts';
 
 const app = new Hono();
 
@@ -69,6 +74,26 @@ app.put('/api/config', async (c) => {
     await getStorage().syncAllNotes();
   }
   return c.json(updated);
+});
+
+// Bible passages
+app.get('/api/bible/status', (c) => {
+  return c.json(getBibleStatus());
+});
+
+app.get('/api/bible/passage', async (c) => {
+  try {
+    const passage = await fetchBiblePassage(
+      c.req.query('reference'),
+      c.req.query('version'),
+    );
+    return c.json(passage);
+  } catch (error) {
+    if (error instanceof BiblePassageError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: 'Bible passage lookup failed.' }, 502);
+  }
 });
 
 // File tree

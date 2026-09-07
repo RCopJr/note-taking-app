@@ -11,6 +11,7 @@ import {
   deleteNote,
   renamePath,
   updateConfig,
+  fetchBibleStatus,
 } from './api.ts';
 import type {
   AppConfig,
@@ -18,6 +19,7 @@ import type {
   NoteMetadata,
   FileNode,
   TagCount,
+  BibleStatus,
 } from './types.ts';
 import { Editor } from './editor/Editor.tsx';
 import { TelescopeModal, type TelescopeMode } from './components/TelescopeModal.tsx';
@@ -32,6 +34,7 @@ export const App: React.FC = () => {
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [tree, setTree] = useState<FileNode[]>([]);
   const [, setTags] = useState<TagCount[]>([]);
+  const [bibleStatus, setBibleStatus] = useState<BibleStatus | null>(null);
   const [activeNote, setActiveNote] = useState<NoteDocument | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -48,16 +51,18 @@ export const App: React.FC = () => {
   // Load all app data from backend
   const refreshData = useCallback(async () => {
     try {
-      const [appConfig, allNotes, fileTree, tagList] = await Promise.all([
+      const [appConfig, allNotes, fileTree, tagList, currentBibleStatus] = await Promise.all([
         fetchConfig(),
         fetchNotes(),
         fetchTree(),
         fetchTags(),
+        fetchBibleStatus(),
       ]);
       setConfig(appConfig);
       setNotes(allNotes);
       setTree(fileTree);
       setTags(tagList);
+      setBibleStatus(currentBibleStatus);
       return { appConfig, allNotes };
     } catch (err) {
       console.error('Failed to load notes data:', err);
@@ -337,6 +342,7 @@ export const App: React.FC = () => {
             livePreview={config?.editor.livePreview ?? true}
             autosave={config?.editor.autosave ?? true}
             autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
+            defaultBibleVersion={config?.bible.defaultVersion || 'ESV'}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-[#6a737d] space-y-2 font-mono text-xs">
@@ -391,6 +397,7 @@ export const App: React.FC = () => {
       <SettingsModal
         isOpen={isSettingsOpen}
         config={config}
+        bibleStatus={bibleStatus}
         onSave={handleSaveConfig}
         onClose={handleCloseModals}
       />

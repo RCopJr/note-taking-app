@@ -54,6 +54,8 @@ export const CheatsheetModal: React.FC<CheatsheetModalProps> = ({
     { category: 'Markdown Syntax', command: '~~strikethrough~~', description: 'Crossed-out text', example: '~~deprecated~~' },
     { category: 'Markdown Syntax', command: '`code`', description: 'Inline monospace code block', example: '`console.log()`' },
     { category: 'Markdown Syntax', command: '```lang\ncode\n```', description: 'Fenced code block', example: '```ts\nconst x = 1;\n```' },
+    { category: 'Markdown Syntax', command: '[[Bible: John 3:16]]', description: 'Bible passage using the configured default version', example: '[[Bible: Psalm 23]]' },
+    { category: 'Markdown Syntax', command: '[[Bible: John 3:16 | ESV]]', description: 'Bible passage with an explicit version', example: '[[Bible: Romans 8:1-4 | ESV]]' },
 
     // Lists & Structure
     { category: 'Lists & Structure', command: '- [ ] task', description: 'Interactive task checklist item (click to toggle)', example: '- [x] Done' },

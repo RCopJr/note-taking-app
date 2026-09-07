@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders } from 'lucide-react';
-import type { AppConfig, VimKeymap } from '../types.ts';
+import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders, BookOpen } from 'lucide-react';
+import type { AppConfig, BibleStatus, VimKeymap } from '../types.ts';
 
 export interface SettingsModalProps {
   isOpen: boolean;
   config: AppConfig | null;
+  bibleStatus: BibleStatus | null;
   onSave: (updates: Partial<AppConfig>) => Promise<void>;
   onClose: () => void;
 }
@@ -12,10 +13,11 @@ export interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   config,
+  bibleStatus,
   onSave,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'keymaps'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'bible' | 'keymaps'>('general');
   const [notesDir, setNotesDir] = useState<string>('');
   const [leaderKey, setLeaderKey] = useState<string>('<Space>');
 
@@ -25,6 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [livePreview, setLivePreview] = useState<boolean>(true);
   const [autosave, setAutosave] = useState<boolean>(true);
   const [autosaveDelayMs, setAutosaveDelayMs] = useState<number>(500);
+  const [defaultBibleVersion, setDefaultBibleVersion] = useState<'ESV'>('ESV');
 
   const [keymaps, setKeymaps] = useState<VimKeymap[]>([]);
   const [newBefore, setNewBefore] = useState<string>('');
@@ -44,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setLivePreview(config.editor.livePreview);
       setAutosave(config.editor.autosave);
       setAutosaveDelayMs(config.editor.autosaveDelayMs);
+      setDefaultBibleVersion(config.bible.defaultVersion);
       setKeymaps(config.vimKeymaps || []);
       setSaveMessage('');
     }
@@ -86,6 +90,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           livePreview,
           autosave,
           autosaveDelayMs,
+        },
+        bible: {
+          defaultVersion: defaultBibleVersion,
         },
       });
       setSaveMessage('Settings saved successfully!');
@@ -151,6 +158,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             <Sliders size={13} />
             <span>Editor</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('bible')}
+            className={`flex shrink-0 items-center space-x-1.5 px-3 py-1.5 border-b-2 font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editor-accent ${
+              activeTab === 'bible'
+                ? 'border-editor-accent bg-editor-active text-editor-text'
+                : 'border-transparent text-editor-muted hover:bg-editor-active hover:text-editor-text'
+            }`}
+          >
+            <BookOpen size={13} />
+            <span>Bible</span>
           </button>
           <button
             type="button"
@@ -273,6 +292,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
                   <span className="text-editor-text">Enable continuous debounced autosave</span>
                 </label>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'bible' && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-editor-text font-semibold block">
+                  Default Bible Version
+                </label>
+                <select
+                  value={defaultBibleVersion}
+                  onChange={(event) => setDefaultBibleVersion(event.target.value as 'ESV')}
+                  className="w-full sm:w-52 bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
+                >
+                  <option value="ESV">English Standard Version (ESV)</option>
+                </select>
+                <p className="text-sm text-editor-muted">
+                  Used when a reference omits its version, for example <code className="font-mono">[[Bible: John 3:16]]</code>.
+                </p>
+              </div>
+
+              <div className="space-y-2 border-t border-editor-border pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-editor-text">ESV API</span>
+                  <span
+                    className={`rounded border px-2 py-0.5 text-xs font-semibold ${
+                      bibleStatus?.configured
+                        ? 'border-editor-border bg-editor-active text-editor-text'
+                        : 'border-editor-border bg-editor-bg text-editor-muted'
+                    }`}
+                  >
+                    {bibleStatus?.configured ? 'Configured' : 'Not configured'}
+                  </span>
+                </div>
+                <p className="text-sm text-editor-muted">
+                  Set <code className="font-mono text-editor-text">ESV_API_KEY</code> in the server environment, then restart the app. The key is never returned to the browser or stored in your notes configuration.
+                </p>
+              </div>
+
+              <div className="space-y-2 border-t border-editor-border pt-4 text-sm text-editor-muted">
+                <p>
+                  Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.
+                </p>
+                <p>
+                  Users may not copy or download more than 500 verses of the ESV Bible or more than one half of any book of the ESV Bible.
+                </p>
+                <a
+                  href="https://www.esv.org/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block text-editor-text underline underline-offset-2"
+                >
+                  Visit ESV.org
+                </a>
               </div>
             </div>
           )}
