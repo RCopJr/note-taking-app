@@ -1,11 +1,48 @@
 import { Vim, vim } from '@replit/codemirror-vim';
-import type { Extension } from '@codemirror/state';
+import { RangeSetBuilder, StateEffect, StateField, type Extension } from '@codemirror/state';
+import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
 import type { VimKeymap } from '../types.ts';
 
 export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL' | 'REPLACE';
 
 type ModeChangeCallback = (mode: VimMode) => void;
 const modeListeners = new Set<ModeChangeCallback>();
+
+interface YankRange {
+  from: number;
+  to: number;
+}
+
+const showYankHighlight = StateEffect.define<readonly YankRange[]>();
+const clearYankHighlight = StateEffect.define();
+
+const yankHighlightField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(decorations, transaction) {
+    for (const effect of transaction.effects) {
+      if (effect.is(clearYankHighlight)) return Decoration.none;
+      if (effect.is(showYankHighlight)) {
+        const builder = new RangeSetBuilder<Decoration>();
+        for (const { from, to } of effect.value) {
+          builder.add(from, to, Decoration.mark({ class: 'cm-vim-yank-highlight' }));
+        }
+        return builder.finish();
+      }
+    }
+    return decorations.map(transaction.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+function highlightYankedRanges(view: EditorView, ranges: readonly YankRange[]): void {
+  if (ranges.length === 0) return;
+
+  view.dispatch({ effects: showYankHighlight.of(ranges) });
+  window.setTimeout(() => {
+    if (!view.dom.isConnected) return;
+    view.dispatch({ effects: clearYankHighlight.of(null) });
+  }, 700);
+}
 
 function dispatchVimEvent(eventName: string): void {
   const evt = new CustomEvent(eventName);
@@ -99,6 +136,33 @@ export function registerVimCommands(): void {
   Vim.defineAction('notesOpenSettings', () => {
     dispatchVimEvent('notes:open-settings');
   });
+  Vim.defineOperator('yank', (cm, args, ranges, oldAnchor) => {
+    const vimState = cm.state.vim;
+    const yankRanges = cm.listSelections()
+      .map(({ anchor, head }) => {
+        const from = cm.indexFromPos(anchor);
+        const to = cm.indexFromPos(head);
+        return from < to ? { from, to } : null;
+      })
+      .filter((range): range is YankRange => range !== null);
+
+    Vim.getRegisterController().pushText(
+      args.registerName,
+      'yank',
+      cm.getSelection(),
+      args.linewise,
+      Boolean(vimState?.visualBlock)
+    );
+    highlightYankedRanges(cm.cm6 as EditorView, yankRanges);
+
+    if (!vimState?.visualMode) return oldAnchor;
+    return ranges[0].anchor.line < ranges[0].head.line
+      || (ranges[0].anchor.line === ranges[0].head.line
+        && ranges[0].anchor.ch <= ranges[0].head.ch)
+      ? ranges[0].anchor
+      : ranges[0].head;
+  });
+
 }
 
   Vim.defineAction('notesExplore', () => {
@@ -129,9 +193,6 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
 
   Vim.mapCommand(`${leader},`, 'action', 'notesOpenSettings', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}s`, 'action', 'notesOpenSettings', {}, { context: 'normal' });
-  // Support Tab and Shift-Tab in normal mode for indentation
-  Vim.map('<Tab>', '>>', 'normal');
-  Vim.map('<S-Tab>', '<<', 'normal');
   // Swap j/k (visual screen lines) and gj/gk (buffer logical lines) for wrapped prose
   Vim.noremap('j', 'gj', 'normal');
   Vim.noremap('k', 'gk', 'normal');
@@ -167,5 +228,5 @@ export function notifyVimModeChange(mode: VimMode): void {
 }
 
 export function createVimExtension(): Extension {
-  return vim({ status: false });
+  return [vim({ status: false }), yankHighlightField];
 }
