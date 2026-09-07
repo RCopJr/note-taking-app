@@ -39,6 +39,7 @@ export interface EditorSettings {
   autosave: boolean;
   autosaveDelayMs: number;
   livePreview: boolean;
+  cursorScrollMarginLines: number;
 }
 
 export interface BibleSettings {

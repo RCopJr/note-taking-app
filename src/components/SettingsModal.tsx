@@ -27,6 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [livePreview, setLivePreview] = useState<boolean>(true);
   const [autosave, setAutosave] = useState<boolean>(true);
   const [autosaveDelayMs, setAutosaveDelayMs] = useState<number>(500);
+  const [cursorScrollMarginLines, setCursorScrollMarginLines] = useState<number>(20);
   const [defaultBibleVersion, setDefaultBibleVersion] = useState<'ESV'>('ESV');
 
   const [keymaps, setKeymaps] = useState<VimKeymap[]>([]);
@@ -47,6 +48,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setLivePreview(config.editor.livePreview);
       setAutosave(config.editor.autosave);
       setAutosaveDelayMs(config.editor.autosaveDelayMs);
+      setCursorScrollMarginLines(config.editor.cursorScrollMarginLines);
       setDefaultBibleVersion(config.bible.defaultVersion);
       setKeymaps(config.vimKeymaps || []);
       setSaveMessage('');
@@ -90,6 +92,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           livePreview,
           autosave,
           autosaveDelayMs,
+          cursorScrollMarginLines,
         },
         bible: {
           defaultVersion: defaultBibleVersion,
@@ -249,6 +252,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => setAutosaveDelayMs(parseInt(e.target.value, 10) || 500)}
                     className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
                   />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-editor-text font-semibold block">Cursor Scroll Margin (lines)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={cursorScrollMarginLines}
+                    onChange={(e) => setCursorScrollMarginLines(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
+                  />
+                  <p className="text-sm text-editor-muted">
+                    Keeps the cursor this many screen lines away from the top and bottom while scrolling. On shorter windows, it uses the largest stable centered margin. Reaching the start or end of a note bypasses it.
+                  </p>
                 </div>
               </div>
 

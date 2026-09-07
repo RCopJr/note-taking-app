@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { indentUnit } from '@codemirror/language';
@@ -28,6 +28,17 @@ export interface EditorProps {
   autosave?: boolean;
   autosaveDelayMs?: number;
   defaultBibleVersion?: string;
+  cursorScrollMarginLines?: number;
+}
+
+function cursorScrollMargin(view: EditorView, requestedLines: number) {
+  const requestedMargin = requestedLines * view.defaultLineHeight;
+  const maximumMargin = Math.max(0, (view.scrollDOM.clientHeight - view.defaultLineHeight) / 2);
+
+  return EditorView.cursorScrollMargin.of({
+    x: 5,
+    y: Math.min(requestedMargin, maximumMargin),
+  });
 }
 
 
@@ -44,6 +55,7 @@ export const Editor: React.FC<EditorProps> = ({
   autosave = true,
   autosaveDelayMs = 500,
   defaultBibleVersion = 'ESV',
+  cursorScrollMarginLines = 20,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -178,6 +190,8 @@ export const Editor: React.FC<EditorProps> = ({
       }
     });
 
+    const cursorScrollMarginCompartment = new Compartment();
+
     const extensions = [
       createVimExtension(),
       EditorView.lineWrapping,
@@ -188,6 +202,7 @@ export const Editor: React.FC<EditorProps> = ({
       history(),
       markdown(),
       updateListener,
+      cursorScrollMarginCompartment.of(EditorView.cursorScrollMargin.of({ x: 5, y: 5 })),
       livePreviewCompartment.of(
         isLivePreviewActive
           ? [livePreviewPlugin, createBiblePreviewExtension(defaultBibleVersion)]
@@ -215,17 +230,29 @@ export const Editor: React.FC<EditorProps> = ({
     viewRef.current = view;
     view.focus();
 
+    const updateCursorScrollMargin = () => {
+      view.dispatch({
+        effects: cursorScrollMarginCompartment.reconfigure(
+          cursorScrollMargin(view, cursorScrollMarginLines)
+        ),
+      });
+    };
+    const resizeObserver = new ResizeObserver(updateCursorScrollMargin);
+    resizeObserver.observe(view.scrollDOM);
+    updateCursorScrollMargin();
+
 
     return () => {
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
       }
       view.destroy();
+      resizeObserver.disconnect();
       viewRef.current = null;
     };
     // Note: initialContent is intentionally NOT in dependency array so autosaves do not recreate the editor!
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId, fontSize, fontFamily, lineNumbers, autosave, autosaveDelayMs]);
+  }, [noteId, fontSize, fontFamily, lineNumbers, autosave, autosaveDelayMs, cursorScrollMarginLines]);
 
 
   return (

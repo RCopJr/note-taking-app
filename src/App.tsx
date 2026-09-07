@@ -342,6 +342,7 @@ export const App: React.FC = () => {
             livePreview={config?.editor.livePreview ?? true}
             autosave={config?.editor.autosave ?? true}
             autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
+            cursorScrollMarginLines={config?.editor.cursorScrollMarginLines ?? 20}
             defaultBibleVersion={config?.bible.defaultVersion || 'ESV'}
           />
         ) : (

@@ -15,6 +15,7 @@ export interface EditorSettings {
   autosave: boolean;
   autosaveDelayMs: number;
   livePreview: boolean;
+  cursorScrollMarginLines: number;
 }
 
 export interface BibleSettings {
@@ -48,6 +49,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     autosave: true,
     autosaveDelayMs: 500,
     livePreview: true,
+    cursorScrollMarginLines: 20,
   },
   bible: {
     defaultVersion: 'ESV',
