@@ -104,13 +104,6 @@ body {
 /* Briefly confirm the range copied by a Vim yank. */
 .cm-editor .cm-vim-yank-highlight {
   background-color: rgba(255, 229, 128, 0.75);
-  animation: cm-vim-yank-fade 700ms ease-out forwards;
-}
-
-@keyframes cm-vim-yank-fade {
-  to {
-    background-color: transparent;
-  }
 }
 
 /* Typora Clean Monochrome Headings (No red or colors) */

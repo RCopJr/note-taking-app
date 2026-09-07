@@ -41,7 +41,7 @@ function highlightYankedRanges(view: EditorView, ranges: readonly YankRange[]): 
   window.setTimeout(() => {
     if (!view.dom.isConnected) return;
     view.dispatch({ effects: clearYankHighlight.of(null) });
-  }, 700);
+  }, 500);
 }
 
 function dispatchVimEvent(eventName: string): void {
