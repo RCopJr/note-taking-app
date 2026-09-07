@@ -1,27 +1,75 @@
-import { marked } from 'marked';
+import { Marked, type Tokens } from 'marked';
 
-// Clean inline styling specifically calibrated for Google Docs paste handling
+interface BibleReferenceToken extends Tokens.Generic {
+  type: 'bibleReference';
+  raw: string;
+  reference: string;
+  version: string | null;
+}
+
+const BIBLE_REFERENCE_PATTERN = /^\[\[Bible:\s*([^|\]\n]+?)\s*(?:\|\s*([^\]\n]+?)\s*)?\]\]/i;
+const googleDocsMarkdown = new Marked({
+  breaks: true,
+  extensions: [{
+    name: 'bibleReference',
+    level: 'inline',
+    start: (source) => source.search(/\[\[Bible:/i),
+    tokenizer(source): BibleReferenceToken | undefined {
+      const match = BIBLE_REFERENCE_PATTERN.exec(source);
+      const reference = match?.[1]?.trim();
+      if (!match || !reference) return undefined;
+
+      return {
+        type: 'bibleReference',
+        raw: match[0],
+        reference,
+        version: match[2]?.trim() || null,
+      };
+    },
+    renderer(token) {
+      const { raw, reference, version } = token as BibleReferenceToken;
+      if (version && version.toUpperCase() !== 'ESV') return escapeHtml(raw);
+
+      const url = `https://www.esv.org/${encodeURIComponent(reference).replaceAll('%20', '+')}/`;
+      return `<a href="${url}">${escapeHtml(reference)}</a>`;
+    },
+  }],
+});
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+// Minimal inline styles survive Google Docs paste without fighting its native
+// paragraph, heading, and list layout.
 export function markdownToGoogleDocsHtml(markdownText: string): string {
-  const rawHtml = marked.parse(markdownText, { async: false }) as string;
+  const rawHtml = googleDocsMarkdown.parse(markdownText, { async: false }) as string;
 
-  // Enhance tags with inline CSS properties Google Docs parses cleanly
-  let styledHtml = rawHtml
-    .replace(/<h1>/g, '<h1 style="font-family: Arial, sans-serif; font-size: 24pt; font-weight: bold; color: #111111; margin-top: 18pt; margin-bottom: 6pt;">')
-    .replace(/<h2>/g, '<h2 style="font-family: Arial, sans-serif; font-size: 18pt; font-weight: bold; color: #222222; margin-top: 14pt; margin-bottom: 4pt;">')
-    .replace(/<h3>/g, '<h3 style="font-family: Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333; margin-top: 12pt; margin-bottom: 4pt;">')
-    .replace(/<h4>/g, '<h4 style="font-family: Arial, sans-serif; font-size: 12pt; font-weight: bold; color: #444444; margin-top: 10pt; margin-bottom: 2pt;">')
-    .replace(/<p>/g, '<p style="font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333; margin-top: 0; margin-bottom: 8pt;">')
-    .replace(/<blockquote>/g, '<blockquote style="border-left: 3px solid #89b4fa; padding-left: 12px; margin: 10pt 0; font-style: italic; color: #555555;">')
-    .replace(/<pre><code>/g, '<pre style="background-color: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 12px; font-family: Consolas, Courier New, monospace; font-size: 9.5pt; line-height: 1.45; overflow-x: auto;"><code style="font-family: Consolas, Courier New, monospace;">')
-    .replace(/<code>/g, '<code style="font-family: Consolas, Courier New, monospace; background-color: #f1f3f5; color: #e83e8c; padding: 2px 5px; border-radius: 3px; font-size: 9.5pt;">')
-    .replace(/<table>/g, '<table style="border-collapse: collapse; width: 100%; margin: 12pt 0; font-family: Arial, sans-serif; font-size: 10pt;">')
-    .replace(/<th>/g, '<th style="border: 1px solid #d0d7de; background-color: #f6f8fa; font-weight: bold; padding: 8px 12px; text-align: left;">')
-    .replace(/<td>/g, '<td style="border: 1px solid #d0d7de; padding: 8px 12px; text-align: left;">')
-    .replace(/<ul>/g, '<ul style="font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333; margin-top: 0; margin-bottom: 8pt; padding-left: 24px;">')
-    .replace(/<ol>/g, '<ol style="font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333; margin-top: 0; margin-bottom: 8pt; padding-left: 24px;">')
-    .replace(/<li>/g, '<li style="margin-bottom: 4pt;">');
+  const styledHtml = rawHtml
+    .replace(/<h1>/g, '<h1 style="font-size: 20pt; font-weight: bold; margin: 0 0 8pt 0; padding: 0; text-indent: 0;">')
+    .replace(/<h2>/g, '<h2 style="font-size: 16pt; font-weight: bold; margin: 12pt 0 4pt 0; padding: 0; text-indent: 0;">')
+    .replace(/<h3>/g, '<h3 style="font-size: 14pt; font-weight: bold; margin: 10pt 0 3pt 0; padding: 0; text-indent: 0;">')
+    .replace(/<h4>/g, '<h4 style="font-size: 12pt; font-weight: bold; margin: 8pt 0 2pt 0; padding: 0; text-indent: 0;">')
+    .replace(/<p>/g, '<p style="line-height: 1.15; margin: 0 0 6pt 0;">')
+    .replace(/<blockquote>/g, '<blockquote style="border-left: 3px solid #999999; padding-left: 10px; margin: 6pt 0;">')
+    .replace(/<pre><code(?: class="([^"]*)")?>/g, (_match, className: string | undefined) => {
+      const classAttribute = className ? ` class="${escapeHtml(className)}"` : '';
+      return `<pre style="margin: 6pt 0; font-family: Consolas, Courier New, monospace; font-size: 9.5pt; line-height: 1.15;"><code${classAttribute} style="font-family: Consolas, Courier New, monospace;">`;
+    })
+    .replace(/<code>/g, '<code style="font-family: Consolas, Courier New, monospace;">')
+    .replace(/<table>/g, '<table style="border-collapse: collapse; width: 100%; margin: 6pt 0;">')
+    .replace(/<th>/g, '<th style="border: 1px solid #999999; font-weight: bold; padding: 4px 6px; text-align: left;">')
+    .replace(/<td>/g, '<td style="border: 1px solid #999999; padding: 4px 6px; text-align: left;">')
+    .replace(/<ul>/g, '<ul style="line-height: 1.15; margin: 0 0 6pt 0;">')
+    .replace(/<ol>/g, '<ol style="line-height: 1.15; margin: 0 0 6pt 0;">')
+    .replace(/<li>/g, '<li style="margin: 0;">');
 
-  return `<div style="font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333;">${styledHtml}</div>`;
+  return `<div>${styledHtml}</div>`;
 }
 
 export async function copyToGoogleDocsClipboard(markdownText: string): Promise<boolean> {
