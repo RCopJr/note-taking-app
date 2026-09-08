@@ -21,11 +21,12 @@ import {
 
 const app = new Hono();
 
-// Enable CORS for local Vite dev server
+// The API controls local files. Only the local Vite client may call it
+// cross-origin during development.
 app.use('*', cors({
-  origin: '*',
+  origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type'],
 }));
 
 let storageProvider: LocalFileStorageProvider | null = null;
@@ -204,6 +205,7 @@ async function main() {
   serve({
     fetch: app.fetch,
     port,
+    hostname: '127.0.0.1',
   });
 }
 

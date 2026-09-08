@@ -29,6 +29,24 @@ async function runTests() {
   assert.ok(config.notesDir, 'Config must have notesDir');
   assert.equal(config.leaderKey, '<Space>');
 
+  const allowedCorsRes = await app.request('/api/config', {
+    headers: { Origin: 'http://localhost:5173' },
+  });
+  assert.equal(
+    allowedCorsRes.headers.get('Access-Control-Allow-Origin'),
+    'http://localhost:5173',
+    'Local Vite clients should be allowed to call the API',
+  );
+
+  const blockedCorsRes = await app.request('/api/config', {
+    headers: { Origin: 'https://example.com' },
+  });
+  assert.equal(
+    blockedCorsRes.headers.get('Access-Control-Allow-Origin'),
+    null,
+    'Other websites must not receive CORS permission',
+  );
+
   // 2. Test Note Creation with frontmatter tags and markdown title
   console.log('2. Testing POST /api/notes (create)');
   const noteContent = `---
