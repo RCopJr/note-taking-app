@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   fetchConfig,
   fetchNotes,
@@ -21,7 +21,7 @@ import type {
   TagCount,
   BibleStatus,
 } from './types.ts';
-import { Editor } from './editor/Editor.tsx';
+import { Editor, type EditorHandle } from './editor/Editor.tsx';
 import { TelescopeModal, type TelescopeMode } from './components/TelescopeModal.tsx';
 import { YaziModal } from './components/YaziModal.tsx';
 import { ExportModal } from './components/ExportModal.tsx';
@@ -36,6 +36,7 @@ export const App: React.FC = () => {
   const [, setTags] = useState<TagCount[]>([]);
   const [bibleStatus, setBibleStatus] = useState<BibleStatus | null>(null);
   const [activeNote, setActiveNote] = useState<NoteDocument | null>(null);
+  const editorRef = useRef<EditorHandle>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Modals
@@ -80,6 +81,17 @@ export const App: React.FC = () => {
       setIsLoading(false);
     });
   }, [refreshData]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!editorRef.current?.isDirty()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
 
   // The editor normally receives leader-key chords through Vim. Keep file
   // navigation available when the empty state has no editor to receive them.
@@ -220,8 +232,13 @@ export const App: React.FC = () => {
     }, 20);
   };
 
+  const saveBeforeTransition = useCallback(async () => {
+    await editorRef.current?.saveIfDirty();
+  }, []);
+
   const handleSelectNote = async (noteId: string, searchMatch?: string) => {
     try {
+      await saveBeforeTransition();
       const note = await fetchNote(noteId);
       setActiveNote(note);
       setTimeout(() => {
@@ -230,7 +247,7 @@ export const App: React.FC = () => {
         );
       }, 60);
     } catch (err) {
-      console.error('Failed to open note:', err);
+      alert(`Failed to open note: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -255,6 +272,7 @@ export const App: React.FC = () => {
     const fullId = parentPath ? `${parentPath}/${base}` : base;
 
     try {
+      await saveBeforeTransition();
       const created = await createNote(
         fullId,
         `# ${base.replace(/\.(md|txt)$/, '')}\n\n`
@@ -296,6 +314,7 @@ export const App: React.FC = () => {
 
   const handleRenamePath = async (oldPath: string, newPath: string) => {
     try {
+      await saveBeforeTransition();
       await renamePath(oldPath, newPath);
       if (activeNote?.id === oldPath) {
         const renamed = await fetchNote(newPath);
@@ -308,6 +327,7 @@ export const App: React.FC = () => {
   };
 
   const handleSaveConfig = async (updates: Partial<AppConfig>) => {
+    await saveBeforeTransition();
     const updated = await updateConfig(updates);
     setConfig(updated);
     await refreshData();
@@ -331,6 +351,7 @@ export const App: React.FC = () => {
       <main className="flex-1 h-full w-full overflow-hidden flex flex-col bg-white">
         {activeNote ? (
           <Editor
+            ref={editorRef}
             key={activeNote.id}
             noteId={activeNote.id}
             initialContent={activeNote.content}
@@ -340,8 +361,6 @@ export const App: React.FC = () => {
             fontSize={config?.editor.fontSize || 16}
             fontFamily={config?.editor.fontFamily}
             livePreview={config?.editor.livePreview ?? true}
-            autosave={config?.editor.autosave ?? true}
-            autosaveDelayMs={config?.editor.autosaveDelayMs || 500}
             cursorScrollMarginLines={config?.editor.cursorScrollMarginLines ?? 20}
             defaultBibleVersion={config?.bible.defaultVersion || 'ESV'}
           />

@@ -36,8 +36,6 @@ export interface EditorSettings {
   fontSize: number;
   fontFamily: string;
   lineNumbers: boolean;
-  autosave: boolean;
-  autosaveDelayMs: number;
   livePreview: boolean;
   cursorScrollMarginLines: number;
 }

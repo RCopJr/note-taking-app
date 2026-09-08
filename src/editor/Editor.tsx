@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
@@ -14,6 +14,7 @@ import {
   livePreviewCompartment,
 } from './livePreview.ts';
 import { createBiblePreviewExtension } from './biblePreview.ts';
+import { DocumentSaveState } from './documentSaveState.ts';
 
 export interface EditorProps {
   noteId: string;
@@ -25,10 +26,13 @@ export interface EditorProps {
   fontFamily?: string;
   lineNumbers?: boolean;
   livePreview?: boolean;
-  autosave?: boolean;
-  autosaveDelayMs?: number;
   defaultBibleVersion?: string;
   cursorScrollMarginLines?: number;
+}
+
+export interface EditorHandle {
+  saveIfDirty: () => Promise<void>;
+  isDirty: () => boolean;
 }
 
 function cursorScrollMargin(view: EditorView, requestedLines: number) {
@@ -42,7 +46,7 @@ function cursorScrollMargin(view: EditorView, requestedLines: number) {
 }
 
 
-export const Editor: React.FC<EditorProps> = ({
+export const Editor = forwardRef<EditorHandle, EditorProps>(({
   noteId,
   initialContent,
   onSave,
@@ -52,15 +56,14 @@ export const Editor: React.FC<EditorProps> = ({
   fontFamily = 'JetBrains Mono, Menlo, Monaco, monospace',
   lineNumbers = true,
   livePreview = true,
-  autosave = true,
-  autosaveDelayMs = 500,
   defaultBibleVersion = 'ESV',
   cursorScrollMarginLines = 20,
-}) => {
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const currentNoteIdRef = useRef<string>(noteId);
+  const saveStateRef = useRef<DocumentSaveState | null>(null);
+  if (!saveStateRef.current) saveStateRef.current = new DocumentSaveState();
+  const saveCycleRef = useRef<Promise<void> | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
@@ -72,26 +75,51 @@ export const Editor: React.FC<EditorProps> = ({
     setupVimKeymaps(leaderKey, customKeymaps);
   }, [leaderKey, customKeymaps]);
 
-  const handleManualSave = useCallback(async () => {
-    if (!viewRef.current) return;
-    const content = viewRef.current.state.doc.toString();
-    setSaveStatus('Saving...');
+  const saveIfDirty = useCallback(async () => {
+    if (saveCycleRef.current) {
+      await saveCycleRef.current;
+      return;
+    }
+
+    const saveCycle = (async () => {
+      while (saveStateRef.current!.isDirty()) {
+        const view = viewRef.current;
+        if (!view) throw new Error('The editor is not available.');
+
+        const revision = saveStateRef.current!.captureRevision();
+        const content = view.state.doc.toString();
+        setSaveStatus('Saving…');
+
+        try {
+          await onSaveRef.current(content);
+        } catch (error) {
+          setSaveStatus('Save failed');
+          throw error;
+        }
+
+        saveStateRef.current!.markSaved(revision);
+      }
+
+      setSaveStatus('Saved');
+    })();
+
+    saveCycleRef.current = saveCycle;
     try {
-      await onSaveRef.current(content);
-      const filename = noteId.split('/').pop() || noteId;
-      setSaveStatus(`"${filename}" written`);
-      setTimeout(() => {
-        setSaveStatus('Ready');
-      }, 2500);
-    } catch {
-      setSaveStatus('Error saving');
+      await saveCycle;
+    } finally {
+      if (saveCycleRef.current === saveCycle) saveCycleRef.current = null;
     }
   }, [noteId]);
+
+  useImperativeHandle(ref, () => ({
+    saveIfDirty,
+    isDirty: () => saveStateRef.current!.isDirty(),
+  }), [saveIfDirty]);
 
   // Listen to custom window events from Vim ex-commands or shortcuts
   useEffect(() => {
     const onVimSave = () => {
-      handleManualSave().catch(() => {});
+      saveIfDirty().catch(() => {});
     };
 
     const onToggleRaw = () => {
@@ -125,7 +153,7 @@ export const Editor: React.FC<EditorProps> = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        handleManualSave().catch(() => {});
+        saveIfDirty().catch(() => {});
       }
     };
 
@@ -142,7 +170,7 @@ export const Editor: React.FC<EditorProps> = ({
       window.removeEventListener('notes:focus-editor', onFocusEditor);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [handleManualSave]);
+  }, [saveIfDirty]);
 
   // Update Live Preview compartment when state changes
   useEffect(() => {
@@ -166,28 +194,10 @@ export const Editor: React.FC<EditorProps> = ({
       viewRef.current = null;
     }
 
-    currentNoteIdRef.current = noteId;
-
     const updateListener = EditorView.updateListener.of((update) => {
-
-      if (update.docChanged) {
-        setSaveStatus('Unsaved');
-        if (autosave) {
-          if (autosaveTimerRef.current) {
-            clearTimeout(autosaveTimerRef.current);
-          }
-          autosaveTimerRef.current = setTimeout(() => {
-            if (!viewRef.current) return;
-            const currentText = viewRef.current.state.doc.toString();
-            onSaveRef.current(currentText).then(() => {
-              setSaveStatus('Autosaved');
-              setTimeout(() => setSaveStatus('Ready'), 1500);
-            }).catch(() => {
-              setSaveStatus('Autosave failed');
-            });
-          }, autosaveDelayMs);
-        }
-      }
+      if (!update.docChanged) return;
+      saveStateRef.current!.markChanged();
+      setSaveStatus('Unsaved');
     });
 
     const cursorScrollMarginCompartment = new Compartment();
@@ -243,16 +253,13 @@ export const Editor: React.FC<EditorProps> = ({
 
 
     return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-      }
       view.destroy();
       resizeObserver.disconnect();
       viewRef.current = null;
     };
-    // Note: initialContent is intentionally NOT in dependency array so autosaves do not recreate the editor!
+    // initialContent is intentionally excluded so save responses do not recreate the editor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId, fontSize, fontFamily, lineNumbers, autosave, autosaveDelayMs, cursorScrollMarginLines]);
+  }, [noteId, fontSize, fontFamily, lineNumbers, cursorScrollMarginLines]);
 
 
   return (
@@ -275,4 +282,4 @@ export const Editor: React.FC<EditorProps> = ({
       </div>
     </div>
   );
-};
+});

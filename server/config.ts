@@ -12,8 +12,6 @@ export interface EditorSettings {
   fontSize: number;
   fontFamily: string;
   lineNumbers: boolean;
-  autosave: boolean;
-  autosaveDelayMs: number;
   livePreview: boolean;
   cursorScrollMarginLines: number;
 }
@@ -46,8 +44,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     fontSize: 15,
     fontFamily: 'JetBrains Mono, Menlo, Monaco, monospace',
     lineNumbers: true,
-    autosave: true,
-    autosaveDelayMs: 500,
     livePreview: true,
     cursorScrollMarginLines: 20,
   },
@@ -71,6 +67,10 @@ export async function loadConfig(cliNotesDir?: string): Promise<AppConfig> {
   try {
     const raw = await fs.readFile(CONFIG_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
+    if (parsed.editor && typeof parsed.editor === 'object') {
+      delete parsed.editor.autosave;
+      delete parsed.editor.autosaveDelayMs;
+    }
     config = {
       ...DEFAULT_CONFIG,
       ...parsed,
@@ -120,6 +120,7 @@ export async function saveConfig(updates: Partial<AppConfig>): Promise<AppConfig
 
   await fs.mkdir(DEFAULT_CONFIG_DIR, { recursive: true });
   await fs.writeFile(CONFIG_FILE, JSON.stringify(updated, null, 2), 'utf-8');
+
   cachedConfig = updated;
   return updated;
 }

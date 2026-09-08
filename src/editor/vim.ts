@@ -136,6 +136,9 @@ export function registerVimCommands(): void {
   Vim.defineAction('notesOpenSettings', () => {
     dispatchVimEvent('notes:open-settings');
   });
+  Vim.defineAction('notesSave', () => {
+    dispatchVimEvent('notes:save');
+  });
   Vim.defineOperator('yank', (cm, args, ranges, oldAnchor) => {
     const vimState = cm.state.vim;
     const yankRanges = cm.listSelections()
@@ -193,6 +196,7 @@ export function setupVimKeymaps(leaderKey: string = '<Space>', customMaps: VimKe
 
   Vim.mapCommand(`${leader},`, 'action', 'notesOpenSettings', {}, { context: 'normal' });
   Vim.mapCommand(`${leader}s`, 'action', 'notesOpenSettings', {}, { context: 'normal' });
+  Vim.mapCommand(`${leader}w`, 'action', 'notesSave', {}, { context: 'normal' });
   // Swap j/k (visual screen lines) and gj/gk (buffer logical lines) for wrapped prose
   Vim.noremap('j', 'gj', 'normal');
   Vim.noremap('k', 'gk', 'normal');

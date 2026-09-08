@@ -12,6 +12,7 @@ import {
   livePreviewPlugin,
   livePreviewCompartment,
 } from '../src/editor/livePreview.ts';
+import { DocumentSaveState } from '../src/editor/documentSaveState.ts';
 
 // Minimal mock environment for headless Node
 if (typeof document === 'undefined') {
@@ -91,6 +92,20 @@ async function runEditorTests() {
   } as unknown as CodeMirror;
   Vim.handleEx(mockCm, 'w');
   assert.ok(saveEventFired, 'Executing :w must fire notes:save custom event');
+
+  const saveState = new DocumentSaveState();
+  assert.equal(saveState.isDirty(), false, 'A newly loaded document should be clean');
+  saveState.markChanged();
+  const savingRevision = saveState.captureRevision();
+  saveState.markChanged();
+  saveState.markSaved(savingRevision);
+  assert.equal(
+    saveState.isDirty(),
+    true,
+    'Edits made while an older revision saves must remain dirty',
+  );
+  saveState.markSaved(saveState.captureRevision());
+  assert.equal(saveState.isDirty(), false, 'Saving the latest revision should make the document clean');
 
   // 2. Test Live Preview & State Creation
   console.log('2. Testing CodeMirror 6 EditorState with Live Preview and Vim extensions');

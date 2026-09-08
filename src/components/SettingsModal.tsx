@@ -25,8 +25,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [fontFamily, setFontFamily] = useState<string>('JetBrains Mono, Menlo, Monaco, monospace');
   const [lineNumbers, setLineNumbers] = useState<boolean>(true);
   const [livePreview, setLivePreview] = useState<boolean>(true);
-  const [autosave, setAutosave] = useState<boolean>(true);
-  const [autosaveDelayMs, setAutosaveDelayMs] = useState<number>(500);
   const [cursorScrollMarginLines, setCursorScrollMarginLines] = useState<number>(20);
   const [defaultBibleVersion, setDefaultBibleVersion] = useState<'ESV'>('ESV');
 
@@ -46,8 +44,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setFontFamily(config.editor.fontFamily);
       setLineNumbers(config.editor.lineNumbers);
       setLivePreview(config.editor.livePreview);
-      setAutosave(config.editor.autosave);
-      setAutosaveDelayMs(config.editor.autosaveDelayMs);
       setCursorScrollMarginLines(config.editor.cursorScrollMarginLines);
       setDefaultBibleVersion(config.bible.defaultVersion);
       setKeymaps(config.vimKeymaps || []);
@@ -90,8 +86,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           fontFamily,
           lineNumbers,
           livePreview,
-          autosave,
-          autosaveDelayMs,
           cursorScrollMarginLines,
         },
         bible: {
@@ -242,18 +236,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-editor-text font-semibold block">Autosave Delay (ms)</label>
-                  <input
-                    type="number"
-                    min={200}
-                    max={5000}
-                    step={100}
-                    value={autosaveDelayMs}
-                    onChange={(e) => setAutosaveDelayMs(parseInt(e.target.value, 10) || 500)}
-                    className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 text-editor-text focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
-                  />
-                </div>
-                <div className="space-y-1">
                   <label className="text-editor-text font-semibold block">Cursor Scroll Margin (lines)</label>
                   <input
                     type="number"
@@ -300,15 +282,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span className="text-editor-text">Enable Obsidian-Style Live Preview by default</span>
                 </label>
 
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={autosave}
-                    onChange={(e) => setAutosave(e.target.checked)}
-                    className="h-4 w-4 shrink-0 accent-editor-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-accent focus-visible:ring-offset-2 focus-visible:ring-offset-editor-bg"
-                  />
-                  <span className="text-editor-text">Enable continuous debounced autosave</span>
-                </label>
               </div>
             </div>
           )}

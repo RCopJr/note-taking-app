@@ -44,8 +44,11 @@ class CheckboxWidget extends WidgetType {
 }
 
 class BulletWidget extends WidgetType {
-  constructor(private readonly depth: number) {
+  private readonly depth: number;
+
+  constructor(depth: number) {
     super();
+    this.depth = depth;
   }
 
   toDOM(): HTMLElement {
