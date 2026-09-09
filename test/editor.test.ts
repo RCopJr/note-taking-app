@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { Vim } from '@replit/codemirror-vim';
-import type { CodeMirror } from '@replit/codemirror-vim';
 import {
   registerVimCommands,
   setupVimKeymaps,
@@ -69,8 +69,7 @@ if (typeof document === 'undefined') {
   } as unknown as typeof CustomEvent;
 }
 
-async function runEditorTests() {
-  console.log('--- Starting Phase 2 Editor Verification ---');
+test('Vim save command, dirty tracking, and editor state', () => {
 
   // 1. Test Vim Commands & Keymaps Setup
   console.log('1. Testing Vim commands and keymaps setup');
@@ -89,7 +88,7 @@ async function runEditorTests() {
     operation: (fn: () => void) => fn(),
     state: { vim: {} },
     getCursor: () => ({ line: 0, ch: 0 }),
-  } as unknown as CodeMirror;
+  } as unknown as Parameters<typeof Vim.handleEx>[0];
   Vim.handleEx(mockCm, 'w');
   assert.ok(saveEventFired, 'Executing :w must fire notes:save custom event');
 
@@ -130,10 +129,4 @@ This is a **bold** paragraph with \`inline code\`.
   assert.equal(state.doc.lines, 8, 'Sample document should have 8 lines');
   assert.ok(state.doc.line(1).text.startsWith('# Heading 1'));
 
-  console.log('✅ All Phase 2 Editor Unit Verification Tests Passed!');
-}
-
-runEditorTests().catch((err) => {
-  console.error('❌ Editor test failed:', err);
-  process.exit(1);
 });
