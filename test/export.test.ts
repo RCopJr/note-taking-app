@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { markdownToGoogleDocsHtml } from '../src/utils/export.ts';
 
-function runExportTests(): void {
+test('Google Docs export preserves supported Markdown semantics', () => {
   const html = markdownToGoogleDocsHtml(`# Abiding in God
 **Main Scripture**: [[Bible: John 15:1-17]]
 *Other Supporting Scripture*: [[Bible: Colossians 3:1-4 | ESV]]
@@ -25,7 +26,4 @@ function runExportTests(): void {
   assert.match(code, /<code[^>]*>\[\[Bible: John 3:16\]\]<\/code>/);
   assert.doesNotMatch(code, /href=/);
 
-  console.log('Google Docs export regression tests passed');
-}
-
-runExportTests();
+});

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -6,12 +7,12 @@ import { app } from '../server/index.ts';
 import { loadConfig } from '../server/config.ts';
 import { initDb } from '../server/db.ts';
 
-async function runTests() {
-  console.log('--- Starting Phase 1 Backend Verification ---');
+test('local backend note lifecycle and CORS policy', async (t) => {
 
   const testDir = path.join(os.tmpdir(), `notes-test-${Date.now()}`);
   const testDb = path.join(testDir, 'test.db');
   await fs.mkdir(testDir, { recursive: true });
+  t.after(() => fs.rm(testDir, { recursive: true, force: true }));
 
   // Initialize config and db in test directory
   await loadConfig(testDir);
@@ -144,12 +145,4 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
   const getDeletedRes = await app.request('/api/notes/guides/welcome.md');
   assert.equal(getDeletedRes.status, 404, 'Deleted note should return 404');
 
-  // Cleanup
-  await fs.rm(testDir, { recursive: true, force: true });
-  console.log('✅ All Phase 1 Backend Verification Tests Passed!');
-}
-
-runTests().catch((err) => {
-  console.error('❌ Test failed:', err);
-  process.exit(1);
 });
