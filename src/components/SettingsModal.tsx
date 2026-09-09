@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders, BookOpen } from 'lucide-react';
-import type { AppConfig, BibleStatus, VimKeymap } from '../types.ts';
+import type {
+  AppConfig,
+  BibleStatus,
+  UpdateAppConfig,
+  VimKeymap,
+} from '../../shared/contracts.ts';
 
 export interface SettingsModalProps {
   isOpen: boolean;
   config: AppConfig | null;
   bibleStatus: BibleStatus | null;
-  onSave: (updates: Partial<AppConfig>) => Promise<void>;
+  onSave: (updates: UpdateAppConfig) => Promise<void>;
   onClose: () => void;
 }
 

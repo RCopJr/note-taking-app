@@ -9,25 +9,11 @@ import {
   getNoteById,
   getAllNotes,
 } from './db.ts';
+import type {
+  FileNode,
+  NoteDocument,
+} from '../shared/contracts.ts';
 
-export interface FileNode {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  size?: number;
-  updatedAt?: number;
-  children?: FileNode[];
-}
-
-export interface NoteDocument {
-  id: string;
-  path: string;
-  title: string;
-  content: string;
-  tags: string[];
-  size: number;
-  updatedAt: number;
-}
 
 export interface StorageProvider {
   listTree(): Promise<FileNode[]>;

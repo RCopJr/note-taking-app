@@ -18,6 +18,22 @@ import {
   fetchBiblePassage,
   getBibleStatus,
 } from './bible.ts';
+import {
+  biblePassageQuerySchema,
+  createFolderRequestSchema,
+  createNoteRequestSchema,
+  localPathSchema,
+  renamePathRequestSchema,
+  saveNoteRequestSchema,
+  searchQuerySchema,
+  updateAppConfigSchema,
+} from '../shared/contracts.ts';
+import {
+  ApiError,
+  errorResponse,
+  parseInput,
+  parseJsonBody,
+} from './http.ts';
 
 const app = new Hono();
 
@@ -28,6 +44,14 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type'],
 }));
+
+app.onError((error, c) => {
+  if (error instanceof ApiError) {
+    return errorResponse(c, error);
+  }
+  console.error('Unhandled API error:', error);
+  return errorResponse(c, new ApiError(500, 'INTERNAL_ERROR', 'The request could not be completed.'));
+});
 
 let storageProvider: LocalFileStorageProvider | null = null;
 
@@ -68,9 +92,9 @@ app.get('/api/config', (c) => {
 });
 
 app.put('/api/config', async (c) => {
-  const body = await c.req.json();
-  const updated = await saveConfig(body);
-  if (body.notesDir) {
+  const updates = await parseJsonBody(c, updateAppConfigSchema);
+  const updated = await saveConfig(updates);
+  if (updates.notesDir) {
     getStorage().setNotesDir(updated.notesDir);
     await getStorage().syncAllNotes();
   }
@@ -83,17 +107,22 @@ app.get('/api/bible/status', (c) => {
 });
 
 app.get('/api/bible/passage', async (c) => {
+  const query = parseInput(biblePassageQuerySchema, {
+    reference: c.req.query('reference'),
+    version: c.req.query('version'),
+  });
   try {
-    const passage = await fetchBiblePassage(
-      c.req.query('reference'),
-      c.req.query('version'),
-    );
-    return c.json(passage);
+    return c.json(await fetchBiblePassage(query.reference, query.version));
   } catch (error) {
     if (error instanceof BiblePassageError) {
-      return c.json({ error: error.message }, error.status);
+      const code = error.status === 400
+        ? 'INVALID_REQUEST'
+        : error.status === 503
+          ? 'CONFIGURATION_ERROR'
+          : 'EXTERNAL_SERVICE_ERROR';
+      throw new ApiError(error.status, code, error.message);
     }
-    return c.json({ error: 'Bible passage lookup failed.' }, 502);
+    throw new ApiError(502, 'EXTERNAL_SERVICE_ERROR', 'Bible passage lookup failed.');
   }
 });
 
@@ -111,67 +140,57 @@ app.get('/api/notes', (c) => {
 
 // Note by ID
 app.get('/api/notes/:id{.+$}', async (c) => {
-  const id = decodeURIComponent(c.req.param('id'));
+  const id = parseInput(localPathSchema, decodeURIComponent(c.req.param('id')));
   try {
-    const note = await getStorage().getNote(id);
-    return c.json(note);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Note not found';
-    return c.json({ error: message }, 404);
+    return c.json(await getStorage().getNote(id));
+  } catch {
+    throw new ApiError(404, 'NOT_FOUND', 'The requested note was not found.');
   }
 });
 
 // Create note
 app.post('/api/notes', async (c) => {
-  const body = await c.req.json<{ id: string; content: string }>();
-  if (!body.id) {
-    return c.json({ error: 'Missing note id/path' }, 400);
-  }
-  const note = await getStorage().saveNote(body.id, body.content || '');
+  const body = await parseJsonBody(c, createNoteRequestSchema);
+  const note = await getStorage().saveNote(body.id, body.content);
   return c.json(note, 201);
 });
 
 // Update note content
 app.put('/api/notes/:id{.+$}', async (c) => {
-  const id = decodeURIComponent(c.req.param('id'));
-  const body = await c.req.json<{ content: string }>();
-  const note = await getStorage().saveNote(id, body.content ?? '');
+  const id = parseInput(localPathSchema, decodeURIComponent(c.req.param('id')));
+  const body = await parseJsonBody(c, saveNoteRequestSchema);
+  const note = await getStorage().saveNote(id, body.content);
   return c.json(note);
 });
 
 // Delete note or directory
 app.delete('/api/notes/:id{.+$}', async (c) => {
-  const id = decodeURIComponent(c.req.param('id'));
+  const id = parseInput(localPathSchema, decodeURIComponent(c.req.param('id')));
   await getStorage().deleteNote(id);
-  return c.json({ success: true });
+  return c.json({ success: true as const });
 });
 
 // Create directory
 app.post('/api/folders', async (c) => {
-  const body = await c.req.json<{ path: string }>();
-  if (!body.path) {
-    return c.json({ error: 'Missing folder path' }, 400);
-  }
+  const body = await parseJsonBody(c, createFolderRequestSchema);
   await getStorage().createFolder(body.path);
-  return c.json({ success: true }, 201);
+  return c.json({ success: true as const }, 201);
 });
 
 // Rename / Move
 app.post('/api/rename', async (c) => {
-  const body = await c.req.json<{ oldPath: string; newPath: string }>();
-  if (!body.oldPath || !body.newPath) {
-    return c.json({ error: 'Missing oldPath or newPath' }, 400);
-  }
+  const body = await parseJsonBody(c, renamePathRequestSchema);
   await getStorage().renamePath(body.oldPath, body.newPath);
-  return c.json({ success: true });
+  return c.json({ success: true as const });
 });
 
 // Search FTS
 app.get('/api/search', (c) => {
-  const q = c.req.query('q') || '';
-  const limit = parseInt(c.req.query('limit') || '30', 10);
-  const results = searchNotesFts(q, limit);
-  return c.json(results);
+  const query = parseInput(searchQuerySchema, {
+    q: c.req.query('q'),
+    limit: c.req.query('limit'),
+  });
+  return c.json(searchNotesFts(query.q, query.limit));
 });
 
 // Tags
@@ -184,6 +203,10 @@ app.get('/api/tags', (c) => {
 app.post('/api/sync', async (c) => {
   const count = await getStorage().syncAllNotes();
   return c.json({ synced: count });
+});
+
+app.notFound((c) => {
+  return errorResponse(c, new ApiError(404, 'NOT_FOUND', 'The requested API route was not found.'));
 });
 
 // ---------------------------------------------------------------------------

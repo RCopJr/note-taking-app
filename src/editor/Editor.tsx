@@ -4,7 +4,7 @@ import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import { indentUnit } from '@codemirror/language';
 import { history, indentWithTab } from '@codemirror/commands';
-import type { VimKeymap } from '../types.ts';
+import type { VimKeymap } from '../../shared/contracts.ts';
 import {
   createVimExtension,
   setupVimKeymaps,

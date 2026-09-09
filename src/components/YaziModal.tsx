@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react';
-import type { FileNode } from '../types.ts';
+import type { FileNode } from '../../shared/contracts.ts';
 import { fetchNote } from '../api.ts';
 
 export interface YaziModalProps {

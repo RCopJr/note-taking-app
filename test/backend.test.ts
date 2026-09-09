@@ -48,6 +48,27 @@ test('local backend note lifecycle and CORS policy', async (t) => {
     'Other websites must not receive CORS permission',
   );
 
+  const invalidConfigRes = await app.request('/api/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ editor: { fontSize: 1_000 } }),
+  });
+  assert.equal(invalidConfigRes.status, 400);
+  assert.equal((await invalidConfigRes.json()).error.code, 'INVALID_REQUEST');
+  assert.equal(
+    (await (await app.request('/api/config')).json()).editor.fontSize,
+    config.editor.fontSize,
+    'Rejected configuration must not mutate the active configuration',
+  );
+
+  const invalidJsonRes = await app.request('/api/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{',
+  });
+  assert.equal(invalidJsonRes.status, 400);
+  assert.equal((await invalidJsonRes.json()).error.code, 'INVALID_REQUEST');
+
   // 2. Test Note Creation with frontmatter tags and markdown title
   console.log('2. Testing POST /api/notes (create)');
   const noteContent = `---
@@ -83,6 +104,34 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
   assert.equal(fetchedNote.title, 'Welcome to Vim Notes');
   assert.ok(fetchedNote.content.includes('Google Docs export'));
 
+  const malformedSaveRes = await app.request('/api/notes/guides/welcome.md', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: 42 }),
+  });
+  assert.equal(malformedSaveRes.status, 400);
+  assert.equal(
+    (await malformedSaveRes.json()).error.code,
+    'INVALID_REQUEST',
+    'Malformed saves must use the stable API error contract',
+  );
+  const noteAfterMalformedSave = await (
+    await app.request('/api/notes/guides/welcome.md')
+  ).json();
+  assert.equal(
+    noteAfterMalformedSave.content,
+    noteContent,
+    'A rejected save must not overwrite note content',
+  );
+
+  const traversalRes = await app.request('/api/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: '../outside.md', content: 'unsafe' }),
+  });
+  assert.equal(traversalRes.status, 400);
+  assert.equal((await traversalRes.json()).error.code, 'INVALID_REQUEST');
+
   // 4. Test Second Note for FTS Search
   console.log('4. Testing FTS search on multiple notes');
   await app.request('/api/notes', {
@@ -107,6 +156,10 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
   const searchDocsResults = await searchDocsRes.json();
   assert.ok(searchDocsResults.length >= 1);
   assert.equal(searchDocsResults[0].id, 'guides/welcome.md');
+
+  const invalidLimitRes = await app.request('/api/search?q=Vite&limit=101');
+  assert.equal(invalidLimitRes.status, 400);
+  assert.equal((await invalidLimitRes.json()).error.code, 'INVALID_REQUEST');
 
   // 6. Test Tags
   console.log('5. Testing GET /api/tags');
@@ -144,5 +197,10 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
 
   const getDeletedRes = await app.request('/api/notes/guides/welcome.md');
   assert.equal(getDeletedRes.status, 404, 'Deleted note should return 404');
+  assert.equal((await getDeletedRes.json()).error.code, 'NOT_FOUND');
+
+  const unknownRouteRes = await app.request('/api/does-not-exist');
+  assert.equal(unknownRouteRes.status, 404);
+  assert.equal((await unknownRouteRes.json()).error.code, 'NOT_FOUND');
 
 });
