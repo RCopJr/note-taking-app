@@ -20,7 +20,8 @@ import type {
   FileNode,
   TagCount,
   BibleStatus,
-} from './types.ts';
+  UpdateAppConfig,
+} from '../shared/contracts.ts';
 import { Editor, type EditorHandle } from './editor/Editor.tsx';
 import { TelescopeModal, type TelescopeMode } from './components/TelescopeModal.tsx';
 import { YaziModal } from './components/YaziModal.tsx';
@@ -326,7 +327,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSaveConfig = async (updates: Partial<AppConfig>) => {
+  const handleSaveConfig = async (updates: UpdateAppConfig) => {
     await saveBeforeTransition();
     const updated = await updateConfig(updates);
     setConfig(updated);

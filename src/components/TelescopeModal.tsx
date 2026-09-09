@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, FileText, FileCode, Tag, X } from 'lucide-react';
-import type { NoteMetadata, FtsSearchResult } from '../types.ts';
+import type { NoteMetadata, FtsSearchResult } from '../../shared/contracts.ts';
 import { searchNotes } from '../api.ts';
 
 export type TelescopeMode = 'files' | 'grep';

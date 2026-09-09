@@ -1,32 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import {
+  appConfigSchema,
+  type AppConfig,
+  type UpdateAppConfig,
+} from '../shared/contracts.ts';
 
-export interface VimKeymap {
-  before: string;
-  after: string;
-  mode: 'normal' | 'insert' | 'visual';
-}
-
-export interface EditorSettings {
-  fontSize: number;
-  fontFamily: string;
-  lineNumbers: boolean;
-  livePreview: boolean;
-  cursorScrollMarginLines: number;
-}
-
-export interface BibleSettings {
-  defaultVersion: 'ESV';
-}
-
-export interface AppConfig {
-  notesDir: string;
-  leaderKey: string;
-  vimKeymaps: VimKeymap[];
-  editor: EditorSettings;
-  bible: BibleSettings;
-}
 
 const DEFAULT_CONFIG_DIR = path.join(os.homedir(), '.config', 'notes');
 const CONFIG_FILE = path.join(DEFAULT_CONFIG_DIR, 'config.json');
@@ -71,7 +51,7 @@ export async function loadConfig(cliNotesDir?: string): Promise<AppConfig> {
       delete parsed.editor.autosave;
       delete parsed.editor.autosaveDelayMs;
     }
-    config = {
+    config = appConfigSchema.parse({
       ...DEFAULT_CONFIG,
       ...parsed,
       editor: {
@@ -83,7 +63,7 @@ export async function loadConfig(cliNotesDir?: string): Promise<AppConfig> {
         ...(parsed.bible || {}),
       },
       vimKeymaps: Array.isArray(parsed.vimKeymaps) ? parsed.vimKeymaps : DEFAULT_CONFIG.vimKeymaps,
-    };
+    });
   } catch {
     // Config file does not exist yet or is invalid, write default
     await fs.writeFile(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8');
@@ -98,9 +78,9 @@ export async function loadConfig(cliNotesDir?: string): Promise<AppConfig> {
   return config;
 }
 
-export async function saveConfig(updates: Partial<AppConfig>): Promise<AppConfig> {
+export async function saveConfig(updates: UpdateAppConfig): Promise<AppConfig> {
   const current = cachedConfig || await loadConfig();
-  const updated: AppConfig = {
+  const updated = appConfigSchema.parse({
     ...current,
     ...updates,
     editor: {
@@ -112,7 +92,7 @@ export async function saveConfig(updates: Partial<AppConfig>): Promise<AppConfig
       ...(updates.bible || {}),
     },
     vimKeymaps: updates.vimKeymaps || current.vimKeymaps,
-  };
+  });
 
   if (updates.notesDir) {
     updated.notesDir = await ensureNotesDir(updates.notesDir);

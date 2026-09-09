@@ -13,7 +13,7 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import { fetchBiblePassage } from '../api.ts';
-import type { BiblePassage } from '../types.ts';
+import type { BiblePassage } from '../../shared/contracts.ts';
 
 interface BibleReference {
   from: number;

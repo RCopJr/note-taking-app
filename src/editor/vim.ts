@@ -1,7 +1,7 @@
 import { Vim, vim } from '@replit/codemirror-vim';
 import { RangeSetBuilder, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import type { VimKeymap } from '../types.ts';
+import type { VimKeymap } from '../../shared/contracts.ts';
 
 export type VimMode = 'NORMAL' | 'INSERT' | 'VISUAL' | 'REPLACE';
 

@@ -1,13 +1,11 @@
+import type {
+  BiblePassage,
+  BibleStatus,
+} from '../shared/contracts.ts';
 const ESV_API_URL = 'https://api.esv.org/v3/passage/text/';
 const CACHE_TTL_MS = 60 * 60 * 1_000;
 const MAX_CACHED_VERSES = 500;
 
-export interface BiblePassage {
-  reference: string;
-  canonical: string;
-  version: 'ESV';
-  text: string;
-}
 
 interface EsvPassageResponse {
   canonical?: string;
@@ -32,7 +30,7 @@ export class BiblePassageError extends Error {
 const passageCache = new Map<string, CacheEntry>();
 let cachedVerseCount = 0;
 
-export function getBibleStatus() {
+export function getBibleStatus(): BibleStatus {
   return {
     configured: Boolean(process.env.ESV_API_KEY?.trim()),
     supportedVersions: ['ESV'] as const,
@@ -84,21 +82,9 @@ function cachePassage(key: string, passage: BiblePassage, now: number): void {
 }
 
 export async function fetchBiblePassage(
-  rawReference: string | undefined,
-  rawVersion: string | undefined,
+  reference: string,
+  version: 'ESV',
 ): Promise<BiblePassage> {
-  const reference = rawReference?.trim() ?? '';
-  const version = (rawVersion?.trim() || 'ESV').toUpperCase();
-
-  if (!reference) {
-    throw new BiblePassageError('A Bible passage reference is required.', 400);
-  }
-  if (reference.length > 200 || reference.includes(';')) {
-    throw new BiblePassageError('Use one Bible passage reference at a time.', 400);
-  }
-  if (version !== 'ESV') {
-    throw new BiblePassageError(`Bible version “${version}” is not supported yet.`, 400);
-  }
 
   const apiKey = process.env.ESV_API_KEY?.trim();
   if (!apiKey) {

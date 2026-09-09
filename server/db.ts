@@ -1,22 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 import { DB_FILE } from './config.ts';
+import type {
+  FtsSearchResult,
+  NoteMetadata,
+} from '../shared/contracts.ts';
 
-export interface NoteMetadata {
-  id: string;
-  path: string;
-  title: string;
-  tags: string[];
-  size: number;
-  updatedAt: number;
-}
-
-export interface FtsSearchResult {
-  id: string;
-  title: string;
-  snippet: string;
-  tags: string[];
-  rank: number;
-}
 
 interface NoteRow {
   id: string;
