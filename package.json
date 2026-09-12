@@ -15,6 +15,13 @@
     "typecheck": "tsc -b",
     "build": "vite build",
     "check": "npm run typecheck && npm test && npm run build",
+    "db:start": "supabase start --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
+    "db:stop": "supabase stop --no-backup",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > shared/database.types.ts",
+    "db:types:check": "supabase gen types typescript --local | diff - shared/database.types.ts",
+    "db:check": "npm run db:reset && npm run db:test && npm run db:types:check",
     "preview": "vite preview",
     "start": "node --env-file-if-exists=.env --experimental-strip-types server/index.ts"
   },
@@ -43,6 +50,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
+    "supabase": "2.117.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
     "vite": "^6.2.0"
