@@ -20,6 +20,7 @@ export interface EditorProps {
   noteId: string;
   initialContent: string;
   onSave: (content: string) => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
   leaderKey?: string;
   customKeymaps?: VimKeymap[];
   fontSize?: number;
@@ -50,6 +51,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
   noteId,
   initialContent,
   onSave,
+  onDirtyChange,
   leaderKey = '<Space>',
   customKeymaps = [],
   fontSize = 15,
@@ -66,6 +68,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
   const saveCycleRef = useRef<Promise<void> | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
 
   const [saveStatus, setSaveStatus] = useState<string>('Ready');
   const [isLivePreviewActive, setIsLivePreviewActive] = useState<boolean>(livePreview);
@@ -98,6 +102,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
         }
 
         saveStateRef.current!.markSaved(revision);
+        onDirtyChangeRef.current?.(saveStateRef.current!.isDirty());
       }
 
       setSaveStatus('Saved');
@@ -198,6 +203,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
       if (!update.docChanged) return;
       saveStateRef.current!.markChanged();
       setSaveStatus('Unsaved');
+      onDirtyChangeRef.current?.(true);
     });
 
     const cursorScrollMarginCompartment = new Compartment();
@@ -227,6 +233,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
     ];
 
 
+    onDirtyChangeRef.current?.(false);
     const state = EditorState.create({
       doc: initialContent,
       extensions,

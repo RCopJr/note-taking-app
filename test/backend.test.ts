@@ -3,9 +3,27 @@ import test from 'node:test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { app } from '../server/index.ts';
+import { createApp } from '../server/index.ts';
 import { loadConfig } from '../server/config.ts';
 import { initDb } from '../server/db.ts';
+
+const TEST_USER_ID = '11111111-1111-4111-8111-111111111111';
+const app = createApp({
+  verifyAccessToken: async (accessToken) => {
+    if (accessToken !== 'test-aal1' && accessToken !== 'test-aal2') return null;
+    return {
+      userId: TEST_USER_ID,
+      email: 'alice@example.test',
+      assuranceLevel: accessToken === 'test-aal2' ? 'aal2' : 'aal1',
+    };
+  },
+});
+
+function request(pathname: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', 'Bearer test-aal2');
+  return app.request(pathname, { ...init, headers });
+}
 
 test('local backend note lifecycle and CORS policy', async (t) => {
 
@@ -18,19 +36,42 @@ test('local backend note lifecycle and CORS policy', async (t) => {
   await loadConfig(testDir);
   initDb(testDb);
 
+  const anonymousRes = await app.request('/api/notes');
+  assert.equal(anonymousRes.status, 401);
+  assert.equal((await anonymousRes.json()).error.code, 'UNAUTHENTICATED');
+
+  const invalidSessionRes = await app.request('/api/notes', {
+    headers: { Authorization: 'Bearer invalid' },
+  });
+  assert.equal(invalidSessionRes.status, 401);
+
+  const firstFactorOnlyRes = await app.request('/api/notes', {
+    headers: { Authorization: 'Bearer test-aal1' },
+  });
+  assert.equal(firstFactorOnlyRes.status, 403);
+  assert.equal((await firstFactorOnlyRes.json()).error.code, 'FORBIDDEN');
+
+  const sessionRes = await request('/api/session');
+  assert.equal(sessionRes.status, 200);
+  assert.deepEqual(await sessionRes.json(), {
+    userId: TEST_USER_ID,
+    email: 'alice@example.test',
+    assuranceLevel: 'aal2',
+  });
+
   // Sync to ensure storage provider points to testDir
-  const syncRes = await app.request('/api/sync', { method: 'POST' });
+  const syncRes = await request('/api/sync', { method: 'POST' });
   assert.equal(syncRes.status, 200, 'Sync should return 200');
 
   // 1. Test Config
   console.log('1. Testing GET /api/config');
-  const configRes = await app.request('/api/config');
+  const configRes = await request('/api/config');
   assert.equal(configRes.status, 200);
   const config = await configRes.json();
   assert.ok(config.notesDir, 'Config must have notesDir');
   assert.equal(config.leaderKey, '<Space>');
 
-  const allowedCorsRes = await app.request('/api/config', {
+  const allowedCorsRes = await request('/api/config', {
     headers: { Origin: 'http://localhost:5173' },
   });
   assert.equal(
@@ -39,7 +80,7 @@ test('local backend note lifecycle and CORS policy', async (t) => {
     'Local Vite clients should be allowed to call the API',
   );
 
-  const blockedCorsRes = await app.request('/api/config', {
+  const blockedCorsRes = await request('/api/config', {
     headers: { Origin: 'https://example.com' },
   });
   assert.equal(
@@ -48,7 +89,7 @@ test('local backend note lifecycle and CORS policy', async (t) => {
     'Other websites must not receive CORS permission',
   );
 
-  const invalidConfigRes = await app.request('/api/config', {
+  const invalidConfigRes = await request('/api/config', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ editor: { fontSize: 1_000 } }),
@@ -56,12 +97,12 @@ test('local backend note lifecycle and CORS policy', async (t) => {
   assert.equal(invalidConfigRes.status, 400);
   assert.equal((await invalidConfigRes.json()).error.code, 'INVALID_REQUEST');
   assert.equal(
-    (await (await app.request('/api/config')).json()).editor.fontSize,
+    (await (await request('/api/config')).json()).editor.fontSize,
     config.editor.fontSize,
     'Rejected configuration must not mutate the active configuration',
   );
 
-  const invalidJsonRes = await app.request('/api/notes', {
+  const invalidJsonRes = await request('/api/notes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: '{',
@@ -81,7 +122,7 @@ tags: [getting-started, guide, test]
 This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 search indexing.
 `;
 
-  const createRes = await app.request('/api/notes', {
+  const createRes = await request('/api/notes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -98,13 +139,13 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
 
   // 3. Test Note Retrieval
   console.log('3. Testing GET /api/notes/:id');
-  const getRes = await app.request('/api/notes/guides/welcome.md');
+  const getRes = await request('/api/notes/guides/welcome.md');
   assert.equal(getRes.status, 200);
   const fetchedNote = await getRes.json();
   assert.equal(fetchedNote.title, 'Welcome to Vim Notes');
   assert.ok(fetchedNote.content.includes('Google Docs export'));
 
-  const malformedSaveRes = await app.request('/api/notes/guides/welcome.md', {
+  const malformedSaveRes = await request('/api/notes/guides/welcome.md', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: 42 }),
@@ -116,7 +157,7 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
     'Malformed saves must use the stable API error contract',
   );
   const noteAfterMalformedSave = await (
-    await app.request('/api/notes/guides/welcome.md')
+    await request('/api/notes/guides/welcome.md')
   ).json();
   assert.equal(
     noteAfterMalformedSave.content,
@@ -124,7 +165,7 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
     'A rejected save must not overwrite note content',
   );
 
-  const traversalRes = await app.request('/api/notes', {
+  const traversalRes = await request('/api/notes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: '../outside.md', content: 'unsafe' }),
@@ -134,7 +175,7 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
 
   // 4. Test Second Note for FTS Search
   console.log('4. Testing FTS search on multiple notes');
-  await app.request('/api/notes', {
+  await request('/api/notes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -144,7 +185,7 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
   });
 
   // 5. Test FTS Search
-  const searchRes = await app.request('/api/search?q=Vite');
+  const searchRes = await request('/api/search?q=Vite');
   assert.equal(searchRes.status, 200);
   const searchResults = await searchRes.json();
   assert.ok(searchResults.length >= 1, 'Should find at least 1 result for "Vite"');
@@ -152,32 +193,32 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
   assert.ok(searchResults[0].snippet.includes('<mark>Vite</mark>'), 'Snippet must highlight search term');
 
   // Search for "Google Docs"
-  const searchDocsRes = await app.request('/api/search?q=Google+Docs');
+  const searchDocsRes = await request('/api/search?q=Google+Docs');
   const searchDocsResults = await searchDocsRes.json();
   assert.ok(searchDocsResults.length >= 1);
   assert.equal(searchDocsResults[0].id, 'guides/welcome.md');
 
-  const invalidLimitRes = await app.request('/api/search?q=Vite&limit=101');
+  const invalidLimitRes = await request('/api/search?q=Vite&limit=101');
   assert.equal(invalidLimitRes.status, 400);
   assert.equal((await invalidLimitRes.json()).error.code, 'INVALID_REQUEST');
 
   // 6. Test Tags
   console.log('5. Testing GET /api/tags');
-  const tagsRes = await app.request('/api/tags');
+  const tagsRes = await request('/api/tags');
   assert.equal(tagsRes.status, 200);
   const tags = await tagsRes.json();
   assert.ok(tags.some((t: { tag: string }) => t.tag === 'getting-started'));
 
   // 7. Test Tree Listing
   console.log('6. Testing GET /api/tree');
-  const treeRes = await app.request('/api/tree');
+  const treeRes = await request('/api/tree');
   assert.equal(treeRes.status, 200);
   const tree = await treeRes.json();
   assert.ok(tree.some((n: { name: string }) => n.name === 'guides' || n.name === 'work'));
 
   // 8. Test Update Note
   console.log('7. Testing PUT /api/notes/:id');
-  const updateRes = await app.request('/api/notes/guides/welcome.md', {
+  const updateRes = await request('/api/notes/guides/welcome.md', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -190,16 +231,16 @@ This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 s
 
   // 9. Test Delete Note
   console.log('8. Testing DELETE /api/notes/:id');
-  const deleteRes = await app.request('/api/notes/guides/welcome.md', {
+  const deleteRes = await request('/api/notes/guides/welcome.md', {
     method: 'DELETE',
   });
   assert.equal(deleteRes.status, 200);
 
-  const getDeletedRes = await app.request('/api/notes/guides/welcome.md');
+  const getDeletedRes = await request('/api/notes/guides/welcome.md');
   assert.equal(getDeletedRes.status, 404, 'Deleted note should return 404');
   assert.equal((await getDeletedRes.json()).error.code, 'NOT_FOUND');
 
-  const unknownRouteRes = await app.request('/api/does-not-exist');
+  const unknownRouteRes = await request('/api/does-not-exist');
   assert.equal(unknownRouteRes.status, 404);
   assert.equal((await unknownRouteRes.json()).error.code, 'NOT_FOUND');
 

@@ -30,7 +30,11 @@ import { CheatsheetModal } from './components/CheatsheetModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
 import { FileText } from 'lucide-react';
 
-export const App: React.FC = () => {
+interface AppProps {
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [tree, setTree] = useState<FileNode[]>([]);
@@ -357,6 +361,7 @@ export const App: React.FC = () => {
             noteId={activeNote.id}
             initialContent={activeNote.content}
             onSave={handleSave}
+            onDirtyChange={onDirtyChange}
             leaderKey={config?.leaderKey || '<Space>'}
             customKeymaps={config?.vimKeymaps || []}
             fontSize={config?.editor.fontSize || 16}
