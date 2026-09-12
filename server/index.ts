@@ -27,6 +27,7 @@ import {
   saveNoteRequestSchema,
   searchQuerySchema,
   updateAppConfigSchema,
+  type AuthSession,
 } from '../shared/contracts.ts';
 import {
   ApiError,
@@ -34,24 +35,12 @@ import {
   parseInput,
   parseJsonBody,
 } from './http.ts';
+import {
+  requireAuthentication,
+  type AuthVariables,
+  type VerifyAccessToken,
+} from './auth.ts';
 
-const app = new Hono();
-
-// The API controls local files. Only the local Vite client may call it
-// cross-origin during development.
-app.use('*', cors({
-  origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type'],
-}));
-
-app.onError((error, c) => {
-  if (error instanceof ApiError) {
-    return errorResponse(c, error);
-  }
-  console.error('Unhandled API error:', error);
-  return errorResponse(c, new ApiError(500, 'INTERNAL_ERROR', 'The request could not be completed.'));
-});
 
 let storageProvider: LocalFileStorageProvider | null = null;
 
@@ -85,6 +74,41 @@ function parseArgs(): { port: number; dir?: string } {
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
+interface CreateAppOptions {
+  verifyAccessToken?: VerifyAccessToken;
+}
+
+export function createApp(options: CreateAppOptions = {}) {
+  const app = new Hono<{ Variables: AuthVariables }>();
+
+  // The API controls local files. Only the local Vite client may call it
+  // cross-origin during development.
+  app.use('*', cors({
+    origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Authorization', 'Content-Type'],
+  }));
+
+  app.onError((error, c) => {
+    if (error instanceof ApiError) {
+      return errorResponse(c, error);
+    }
+    console.error('Unhandled API error:', error);
+    return errorResponse(c, new ApiError(500, 'INTERNAL_ERROR', 'The request could not be completed.'));
+  });
+
+  app.use('/api/*', requireAuthentication('aal2', options.verifyAccessToken));
+
+  app.get('/api/session', (c) => {
+    const identity = c.get('authIdentity');
+    const session: AuthSession = {
+      userId: identity.userId,
+      ...(identity.email ? { email: identity.email } : {}),
+      assuranceLevel: 'aal2',
+    };
+    return c.json(session);
+  });
+
 
 // Config
 app.get('/api/config', (c) => {
@@ -208,6 +232,11 @@ app.post('/api/sync', async (c) => {
 app.notFound((c) => {
   return errorResponse(c, new ApiError(404, 'NOT_FOUND', 'The requested API route was not found.'));
 });
+
+  return app;
+}
+
+const app = createApp();
 
 // ---------------------------------------------------------------------------
 // Server Bootstrap

@@ -165,6 +165,14 @@ export const biblePassageQuerySchema = z.object({
   version: z.literal('ESV').default('ESV'),
 }).strict();
 
+export const authSessionSchema = z.object({
+  userId: z.uuid(),
+  email: z.email().optional(),
+  assuranceLevel: z.literal('aal2'),
+}).strict();
+
+export type AuthSession = z.infer<typeof authSessionSchema>;
+
 export const successResponseSchema = z.object({
   success: z.literal(true),
 }).strict();
