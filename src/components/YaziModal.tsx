@@ -116,6 +116,10 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   }, [tree, currentPath]);
 
   const folderChoices = useMemo(() => listFolderChoices(tree), [tree]);
+  const currentFolder = currentPath ? findNodeByPath(tree, currentPath) : null;
+  const currentDisplayPath = currentPath
+    ? folderChoices.find((folder) => folder.id === currentPath)?.label ?? currentFolder?.name ?? ''
+    : 'Notes';
 
   // Selected item
   const selectedItem = currentItems[selectedIndex] as FileNode | undefined;
@@ -318,9 +322,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         {/* Header Breadcrumbs Bar */}
         <div className="min-h-10 shrink-0 bg-editor-sidebar border-b border-editor-border px-4 py-2 flex items-center justify-between gap-3 text-sm">
           <div className="flex min-w-0 items-center space-x-2 truncate">
-            {currentPath && (
-                <span className="text-editor-text font-mono truncate">{currentPath}</span>
-            )}
+            <span className="text-editor-text font-mono truncate">{currentDisplayPath}</span>
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
@@ -394,7 +396,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
             className="w-[38%] min-w-52 shrink-0 bg-editor-bg overflow-y-auto p-2 text-sm space-y-0.5"
           >
             <div className="text-xs uppercase text-editor-muted font-semibold px-2 py-1 mb-1 tracking-wider flex items-center justify-between gap-2">
-              <span className="truncate">{currentPath ? currentPath.split('/').pop() : 'Root'}</span>
+              <span className="truncate">{currentFolder?.name ?? 'Root'}</span>
               <span className="text-editor-muted font-normal shrink-0">{currentItems.length} items</span>
             </div>
 

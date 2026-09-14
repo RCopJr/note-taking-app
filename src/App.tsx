@@ -44,6 +44,22 @@ function containsNode(node: FileNode, id: string): boolean {
   return node.path === id || node.children?.some((child) => containsNode(child, id)) === true;
 }
 
+function updateTreeNote(nodes: FileNode[], note: NoteDocument): FileNode[] {
+  return nodes.map((node) => {
+    if (node.path === note.id) {
+      return {
+        ...node,
+        name: note.name,
+        parentId: note.folderId,
+        size: note.size,
+        revision: note.revision,
+        updatedAt: note.updatedAt,
+      };
+    }
+    return node.children ? { ...node, children: updateTreeNote(node.children, note) } : node;
+  });
+}
+
 export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
   const [config, setConfig] = useState<AppConfig>(() => loadPreferences());
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
@@ -274,10 +290,11 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     const updated = await saveNoteContent(activeNote.id, content, activeNote.revision);
     setActiveNote(updated);
 
-    // Update note title and metadata in list
-    setNotes((prev) =>
-      prev.map((n) => (n.id === updated.id ? { ...n, title: updated.title, updatedAt: updated.updatedAt } : n))
+    const { content: _, ...metadata } = updated;
+    setNotes((previous) =>
+      previous.map((note) => note.id === updated.id ? metadata : note)
     );
+    setTree((previous) => updateTreeNote(previous, updated));
   }, [activeNote]);
 
   const handleCreateNote = async (folderId?: string) => {
@@ -340,8 +357,8 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
       if (node.type === 'directory') {
         await updateFolder(node.path, newName, node.parentId);
       } else {
-        if (!node.revision) throw new Error('The note revision is unavailable.');
-        const renamed = await updateNoteMetadata(node.path, newName, node.parentId, node.revision);
+        const current = await fetchNote(node.path);
+        const renamed = await updateNoteMetadata(node.path, newName, node.parentId, current.revision);
         if (activeNote?.id === node.path) setActiveNote(renamed);
       }
       await refreshData();
@@ -356,8 +373,8 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
       if (node.type === 'directory') {
         await updateFolder(node.path, node.name, parentId);
       } else {
-        if (!node.revision) throw new Error('The note revision is unavailable.');
-        const moved = await updateNoteMetadata(node.path, node.name, parentId, node.revision);
+        const current = await fetchNote(node.path);
+        const moved = await updateNoteMetadata(node.path, node.name, parentId, current.revision);
         if (activeNote?.id === node.path) setActiveNote(moved);
       }
       await refreshData();
