@@ -177,7 +177,7 @@ export function AuthGate({ children }: AuthGateProps) {
     setEnrollment({
       id: data.id,
       totp: {
-        qrCode: `data:image/svg+xml;utf-8,${encodeURIComponent(data.totp.qr_code)}`,
+        qrCode: data.totp.qr_code,
         secret: data.totp.secret,
       },
     });
