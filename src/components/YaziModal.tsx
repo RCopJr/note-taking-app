@@ -4,6 +4,7 @@ import {
   FileText,
   FileCode,
   AlertTriangle,
+  Trash2,
   X,
 } from 'lucide-react';
 import type { FileNode } from '../../shared/contracts.ts';
@@ -16,29 +17,36 @@ export interface YaziModalProps {
   onSelectNote: (noteId: string) => void;
   onCreateNote: (parentPath?: string) => Promise<void>;
   onCreateFolder: (parentPath?: string) => Promise<void>;
-  onDeletePath: (path: string) => Promise<void>;
-  onRenamePath: (oldPath: string, newPath: string) => Promise<void>;
+  onDeletePath: (node: FileNode) => Promise<void>;
+  onRenamePath: (node: FileNode, newName: string) => Promise<void>;
+  onMovePath: (node: FileNode, parentId: string | null) => Promise<void>;
+  onOpenTrash: () => void;
   onClose: () => void;
 }
 
-// Find a node by path in the tree
-function findNodeByPath(nodes: FileNode[], targetPath: string): FileNode | null {
+// Tree nodes retain stable UUID identity; hierarchy comes from parentId.
+function findNodeByPath(nodes: FileNode[], targetId: string): FileNode | null {
   for (const node of nodes) {
-    if (node.path === targetPath) return node;
+    if (node.path === targetId) return node;
     if (node.children) {
-      const found = findNodeByPath(node.children, targetPath);
+      const found = findNodeByPath(node.children, targetId);
       if (found) return found;
     }
   }
   return null;
 }
 
-// Get parent path from a given path
-function getParentPath(itemPath: string): string {
-  const parts = itemPath.split('/').filter(Boolean);
-  if (parts.length <= 1) return '';
-  parts.pop();
-  return parts.join('/');
+interface FolderChoice {
+  id: string;
+  label: string;
+}
+
+function listFolderChoices(nodes: FileNode[], prefix = ''): FolderChoice[] {
+  return nodes.flatMap((node) => {
+    if (node.type !== 'directory') return [];
+    const label = prefix ? `${prefix}/${node.name}` : node.name;
+    return [{ id: node.path, label }, ...listFolderChoices(node.children ?? [], label)];
+  });
 }
 
 export const YaziModal: React.FC<YaziModalProps> = ({
@@ -50,6 +58,8 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   onCreateFolder,
   onDeletePath,
   onRenamePath,
+  onMovePath,
+  onOpenTrash,
   onClose,
 }) => {
   const [currentPath, setCurrentPath] = useState<string>('');
@@ -77,8 +87,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (activeNoteId) {
-        const parent = getParentPath(activeNoteId);
-        setCurrentPath(parent);
+        setCurrentPath(findNodeByPath(tree, activeNoteId)?.parentId ?? '');
       } else {
         setCurrentPath('');
       }
@@ -99,13 +108,18 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     if (!currentPath) {
       return [];
     }
-    const parentPath = getParentPath(currentPath);
-    if (!parentPath) {
+    const parentId = findNodeByPath(tree, currentPath)?.parentId ?? null;
+    if (!parentId) {
       return tree;
     }
-    const node = findNodeByPath(tree, parentPath);
-    return node?.children || [];
+    return findNodeByPath(tree, parentId)?.children || [];
   }, [tree, currentPath]);
+
+  const folderChoices = useMemo(() => listFolderChoices(tree), [tree]);
+  const currentFolder = currentPath ? findNodeByPath(tree, currentPath) : null;
+  const currentDisplayPath = currentPath
+    ? folderChoices.find((folder) => folder.id === currentPath)?.label ?? currentFolder?.name ?? ''
+    : 'Notes';
 
   // Selected item
   const selectedItem = currentItems[selectedIndex] as FileNode | undefined;
@@ -184,10 +198,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
 
   const handleAscend = useCallback(() => {
     if (!currentPath) return;
-    const parent = getParentPath(currentPath);
-    setCurrentPath(parent);
+    setCurrentPath(findNodeByPath(tree, currentPath)?.parentId ?? '');
     setSelectedIndex(0);
-  }, [currentPath]);
+  }, [currentPath, tree]);
 
   // Keyboard navigation listener (Yazi style)
   useEffect(() => {
@@ -198,9 +211,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       if (itemToDelete) {
         if (e.key === 'Enter' || e.key === 'y') {
           e.preventDefault();
-          const path = itemToDelete.path;
+          const node = itemToDelete;
           setItemToDelete(null);
-          onDeletePath(path).catch(() => {});
+          onDeletePath(node).catch(() => {});
         } else if (e.key === 'Escape' || e.key === 'q' || e.key === 'n') {
           e.preventDefault();
           setItemToDelete(null);
@@ -234,6 +247,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       } else if (e.key === 'A') {
         e.preventDefault();
         onCreateFolder(currentPath || undefined).catch(() => {});
+      } else if (e.key === 't') {
+        e.preventDefault();
+        onOpenTrash();
       } else if (e.key === 'd') {
         if (selectedItem) {
           e.preventDefault();
@@ -243,11 +259,28 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         if (selectedItem) {
           e.preventDefault();
           const newName = prompt(`Rename "${selectedItem.name}" to:`, selectedItem.name);
-          if (newName && newName.trim() && newName !== selectedItem.name) {
-            const parent = getParentPath(selectedItem.path);
-            const newPath = parent ? `${parent}/${newName.trim()}` : newName.trim();
-            onRenamePath(selectedItem.path, newPath).catch(() => {});
+          if (newName && newName.trim() && newName.trim() !== selectedItem.name) {
+            onRenamePath(selectedItem, newName.trim()).catch(() => {});
           }
+        }
+      } else if (e.key === 'm') {
+        if (selectedItem) {
+          e.preventDefault();
+          const destination = prompt(
+            `Move "${selectedItem.name}" to folder path (use / for root):\n\n${
+              folderChoices.map((folder) => folder.label).join('\n')
+            }`,
+            '/',
+          );
+          if (destination === null) return;
+          const parentId = destination.trim() === '/'
+            ? null
+            : folderChoices.find((folder) => folder.label === destination.trim())?.id;
+          if (parentId === undefined) {
+            alert('Folder path not found.');
+            return;
+          }
+          onMovePath(selectedItem, parentId).catch(() => {});
         }
       }
     };
@@ -267,6 +300,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     onCreateFolder,
     onDeletePath,
     onRenamePath,
+    onMovePath,
+    folderChoices,
+    onOpenTrash,
     onClose,
   ]);
 
@@ -286,12 +322,18 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         {/* Header Breadcrumbs Bar */}
         <div className="min-h-10 shrink-0 bg-editor-sidebar border-b border-editor-border px-4 py-2 flex items-center justify-between gap-3 text-sm">
           <div className="flex min-w-0 items-center space-x-2 truncate">
-            {currentPath && (
-                <span className="text-editor-text font-mono truncate">{currentPath}</span>
-            )}
+            <span className="text-editor-text font-mono truncate">{currentDisplayPath}</span>
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={onOpenTrash}
+              className="inline-flex h-6 items-center gap-1 rounded border border-editor-border px-2 text-xs text-editor-muted transition-colors hover:bg-editor-active hover:text-editor-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
+            >
+              <Trash2 size={12} />
+              Trash
+            </button>
             <button
               type="button"
               onClick={() => setShowHelp((visible) => !visible)}
@@ -354,7 +396,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
             className="w-[38%] min-w-52 shrink-0 bg-editor-bg overflow-y-auto p-2 text-sm space-y-0.5"
           >
             <div className="text-xs uppercase text-editor-muted font-semibold px-2 py-1 mb-1 tracking-wider flex items-center justify-between gap-2">
-              <span className="truncate">{currentPath ? currentPath.split('/').pop() : 'Root'}</span>
+              <span className="truncate">{currentFolder?.name ?? 'Root'}</span>
               <span className="text-editor-muted font-normal shrink-0">{currentItems.length} items</span>
             </div>
 
@@ -469,7 +511,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">a</kbd> new note</span>
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">A</kbd> new folder</span>
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">r</kbd> rename</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">m</kbd> move</span>
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">d</kbd> delete</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">t</kbd> trash</span>
             </div>
             <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">q / Esc</kbd> close</span>
           </div>
@@ -492,8 +536,8 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                 Are you sure you want to delete {itemToDelete.type}{' '}
                 <span className="font-mono font-semibold text-editor-text">&quot;{itemToDelete.name}&quot;</span>
                 {itemToDelete.type === 'directory'
-                  ? ' and all of its contents? This cannot be undone.'
-                  : '?'}
+                  ? ' and all of its contents? Deleted items can be recovered.'
+                  : '? Deleted notes can be recovered.'}
               </p>
               <div className="flex flex-wrap justify-end gap-2 text-sm pt-2">
                 <button
@@ -506,9 +550,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                 <button
                   type="button"
                   onClick={async () => {
-                    const path = itemToDelete.path;
+                    const node = itemToDelete;
                     setItemToDelete(null);
-                    await onDeletePath(path);
+                    await onDeletePath(node);
                   }}
                   className="px-3 py-1.5 rounded bg-editor-accent hover:bg-editor-text text-white font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
                 >

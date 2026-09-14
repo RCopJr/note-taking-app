@@ -1,22 +1,26 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  fetchConfig,
   fetchNotes,
   fetchNote,
   fetchTree,
   fetchTags,
+  fetchTrash,
   saveNoteContent,
   createNote,
   createFolder,
+  deleteFolder,
   deleteNote,
-  renamePath,
-  updateConfig,
+  restoreFolder,
+  restoreNote,
+  updateFolder,
+  updateNoteMetadata,
   fetchBibleStatus,
 } from './api.ts';
 import type {
   AppConfig,
   NoteDocument,
   NoteMetadata,
+  DeletedNode,
   FileNode,
   TagCount,
   BibleStatus,
@@ -25,19 +29,42 @@ import type {
 import { Editor, type EditorHandle } from './editor/Editor.tsx';
 import { TelescopeModal, type TelescopeMode } from './components/TelescopeModal.tsx';
 import { YaziModal } from './components/YaziModal.tsx';
+import { TrashModal } from './components/TrashModal.tsx';
 import { ExportModal } from './components/ExportModal.tsx';
 import { CheatsheetModal } from './components/CheatsheetModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
+import { loadPreferences, savePreferences } from './preferences.ts';
 import { FileText } from 'lucide-react';
 
 interface AppProps {
   onDirtyChange?: (dirty: boolean) => void;
 }
 
+function containsNode(node: FileNode, id: string): boolean {
+  return node.path === id || node.children?.some((child) => containsNode(child, id)) === true;
+}
+
+function updateTreeNote(nodes: FileNode[], note: NoteDocument): FileNode[] {
+  return nodes.map((node) => {
+    if (node.path === note.id) {
+      return {
+        ...node,
+        name: note.name,
+        parentId: note.folderId,
+        size: note.size,
+        revision: note.revision,
+        updatedAt: note.updatedAt,
+      };
+    }
+    return node.children ? { ...node, children: updateTreeNote(node.children, note) } : node;
+  });
+}
+
 export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
-  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [config, setConfig] = useState<AppConfig>(() => loadPreferences());
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [tree, setTree] = useState<FileNode[]>([]);
+  const [trash, setTrash] = useState<DeletedNode[]>([]);
   const [, setTags] = useState<TagCount[]>([]);
   const [bibleStatus, setBibleStatus] = useState<BibleStatus | null>(null);
   const [activeNote, setActiveNote] = useState<NoteDocument | null>(null);
@@ -51,25 +78,26 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isTrashOpen, setIsTrashOpen] = useState<boolean>(false);
   const leaderHint = config?.leaderKey || '<Space>';
 
 
   // Load all app data from backend
   const refreshData = useCallback(async () => {
     try {
-      const [appConfig, allNotes, fileTree, tagList, currentBibleStatus] = await Promise.all([
-        fetchConfig(),
+      const [allNotes, fileTree, tagList, deletedItems, currentBibleStatus] = await Promise.all([
         fetchNotes(),
         fetchTree(),
         fetchTags(),
+        fetchTrash(),
         fetchBibleStatus(),
       ]);
-      setConfig(appConfig);
       setNotes(allNotes);
       setTree(fileTree);
       setTags(tagList);
+      setTrash(deletedItems);
       setBibleStatus(currentBibleStatus);
-      return { appConfig, allNotes };
+      return { allNotes };
     } catch (err) {
       console.error('Failed to load notes data:', err);
       return null;
@@ -232,6 +260,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     setIsExportOpen(false);
     setIsCheatsheetOpen(false);
     setIsSettingsOpen(false);
+    setIsTrashOpen(false);
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('notes:focus-editor'));
     }, 20);
@@ -261,10 +290,11 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     const updated = await saveNoteContent(activeNote.id, content, activeNote.revision);
     setActiveNote(updated);
 
-    // Update note title and metadata in list
-    setNotes((prev) =>
-      prev.map((n) => (n.id === updated.id ? { ...n, title: updated.title, updatedAt: updated.updatedAt } : n))
+    const { content: _, ...metadata } = updated;
+    setNotes((previous) =>
+      previous.map((note) => note.id === updated.id ? metadata : note)
     );
+    setTree((previous) => updateTreeNote(previous, updated));
   }, [activeNote]);
 
   const handleCreateNote = async (folderId?: string) => {
@@ -290,25 +320,29 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     }
   };
 
-  const handleCreateFolder = async (parentPath?: string) => {
+  const handleCreateFolder = async (parentId?: string) => {
     const folderName = prompt(
-      parentPath ? `Create subfolder inside "${parentPath}":` : 'Enter folder name (e.g. projects):'
+      parentId ? 'Create subfolder in the selected folder:' : 'Enter folder name (e.g. projects):'
     );
     if (!folderName) return;
 
-    const fullPath = parentPath ? `${parentPath}/${folderName}` : folderName;
     try {
-      await createFolder(fullPath);
+      await createFolder(folderName.trim(), parentId ?? null);
       await refreshData();
     } catch (err) {
       alert(`Failed to create folder: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  const handleDeletePath = async (pathToDelete: string) => {
+  const handleDeletePath = async (node: FileNode) => {
     try {
-      await deleteNote(pathToDelete);
-      if (activeNote?.id === pathToDelete) {
+      if (node.type === 'directory') {
+        await deleteFolder(node.path);
+      } else {
+        if (!node.revision) throw new Error('The note revision is unavailable.');
+        await deleteNote(node.path, node.revision);
+      }
+      if (activeNote && containsNode(node, activeNote.id)) {
         setActiveNote(null);
       }
       await refreshData();
@@ -317,13 +351,15 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     }
   };
 
-  const handleRenamePath = async (oldPath: string, newPath: string) => {
+  const handleRenamePath = async (node: FileNode, newName: string) => {
     try {
       await saveBeforeTransition();
-      await renamePath(oldPath, newPath);
-      if (activeNote?.id === oldPath) {
-        const renamed = await fetchNote(newPath);
-        setActiveNote(renamed);
+      if (node.type === 'directory') {
+        await updateFolder(node.path, newName, node.parentId);
+      } else {
+        const current = await fetchNote(node.path);
+        const renamed = await updateNoteMetadata(node.path, newName, node.parentId, current.revision);
+        if (activeNote?.id === node.path) setActiveNote(renamed);
       }
       await refreshData();
     } catch (err) {
@@ -331,11 +367,39 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     }
   };
 
+  const handleMovePath = async (node: FileNode, parentId: string | null) => {
+    try {
+      await saveBeforeTransition();
+      if (node.type === 'directory') {
+        await updateFolder(node.path, node.name, parentId);
+      } else {
+        const current = await fetchNote(node.path);
+        const moved = await updateNoteMetadata(node.path, node.name, parentId, current.revision);
+        if (activeNote?.id === node.path) setActiveNote(moved);
+      }
+      await refreshData();
+    } catch (err) {
+      alert(`Failed to move: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleRestore = async (item: DeletedNode) => {
+    try {
+      if (item.type === 'directory') {
+        await restoreFolder(item.id);
+      } else {
+        if (!item.revision) throw new Error('The note revision is unavailable.');
+        await restoreNote(item.id, item.revision);
+      }
+      await refreshData();
+    } catch (err) {
+      alert(`Failed to restore: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   const handleSaveConfig = async (updates: UpdateAppConfig) => {
     await saveBeforeTransition();
-    const updated = await updateConfig(updates);
-    setConfig(updated);
-    await refreshData();
+    setConfig((current) => savePreferences(current, updates));
   };
 
   if (isLoading) {
@@ -390,6 +454,18 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
         onCreateFolder={handleCreateFolder}
         onDeletePath={handleDeletePath}
         onRenamePath={handleRenamePath}
+        onMovePath={handleMovePath}
+        onOpenTrash={() => {
+          setIsExplorerOpen(false);
+          setIsTrashOpen(true);
+        }}
+        onClose={handleCloseModals}
+      />
+
+      <TrashModal
+        isOpen={isTrashOpen}
+        items={trash}
+        onRestore={handleRestore}
         onClose={handleCloseModals}
       />
 

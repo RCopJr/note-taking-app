@@ -26,25 +26,50 @@ export type NoteDocument = z.infer<typeof noteDocumentSchema>;
 export interface FileNode {
   name: string;
   path: string;
+  parentId: string | null;
   type: 'file' | 'directory';
   size?: number;
+  revision?: number;
   updatedAt?: number;
   children?: FileNode[];
 }
 
 export const fileNodeSchema: z.ZodType<FileNode> = z.lazy(() => z.object({
   name: z.string().min(1),
-  path: z.string(),
+  path: z.uuid(),
+  parentId: z.uuid().nullable(),
   type: z.enum(['file', 'directory']),
   size: z.number().int().nonnegative().optional(),
+  revision: z.number().int().positive().optional(),
   updatedAt: timestampSchema.optional(),
   children: z.array(fileNodeSchema).optional(),
 }).strict());
 
 export const fileTreeSchema = z.array(fileNodeSchema);
 
+export const folderMetadataSchema = z.object({
+  id: z.uuid(),
+  parentId: z.uuid().nullable(),
+  name: z.string().trim().min(1).max(255),
+  updatedAt: timestampSchema,
+}).strict();
+
+export type FolderMetadata = z.infer<typeof folderMetadataSchema>;
+
+export const deletedNodeSchema = z.object({
+  id: z.uuid(),
+  type: z.enum(['file', 'directory']),
+  name: z.string().trim().min(1).max(255),
+  revision: z.number().int().positive().optional(),
+  deletedAt: timestampSchema,
+}).strict();
+
+export type DeletedNode = z.infer<typeof deletedNodeSchema>;
+export const deletedNodesSchema = z.array(deletedNodeSchema);
+
 export const ftsSearchResultSchema = z.object({
   id: z.string().min(1),
+  path: z.string().min(1),
   title: z.string(),
   snippet: z.string(),
   tags: z.array(tagSchema),
@@ -87,7 +112,6 @@ export const bibleSettingsSchema = z.object({
 export type BibleSettings = z.infer<typeof bibleSettingsSchema>;
 
 export const appConfigSchema = z.object({
-  notesDir: z.string().trim().min(1).max(4096),
   leaderKey: z.string().trim().min(1).max(100),
   vimKeymaps: z.array(vimKeymapSchema).max(100),
   editor: editorSettingsSchema,
@@ -97,7 +121,6 @@ export const appConfigSchema = z.object({
 export type AppConfig = z.infer<typeof appConfigSchema>;
 
 export const updateAppConfigSchema = z.object({
-  notesDir: appConfigSchema.shape.notesDir.optional(),
   leaderKey: appConfigSchema.shape.leaderKey.optional(),
   vimKeymaps: appConfigSchema.shape.vimKeymaps.optional(),
   editor: editorSettingsSchema.partial().optional(),
@@ -122,22 +145,14 @@ export const biblePassageSchema = z.object({
 
 export type BiblePassage = z.infer<typeof biblePassageSchema>;
 
-export const localPathSchema = z.string()
+const cloudNameSchema = z.string()
   .trim()
   .min(1)
-  .max(1024)
-  .refine((value) => !value.includes('\\') && !value.startsWith('/'), 'Use a relative path with forward slashes.')
-  .refine(
-    (value) => value.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..'),
-    'Path segments must be non-empty and cannot be . or ...',
-  );
+  .max(255)
+  .refine((value) => !value.includes('/') && !value.includes('\\'), 'A name cannot contain path separators.');
 
 export const createNoteRequestSchema = z.object({
-  name: z.string()
-    .trim()
-    .min(1)
-    .max(255)
-    .refine((value) => !value.includes('/') && !value.includes('\\'), 'A note name cannot contain path separators.'),
+  name: cloudNameSchema,
   folderId: z.uuid().nullable().default(null),
   content: z.string().default(''),
 }).strict();
@@ -151,18 +166,33 @@ export const saveNoteRequestSchema = z.object({
 
 export type SaveNoteRequest = z.infer<typeof saveNoteRequestSchema>;
 
+export const updateNoteMetadataRequestSchema = z.object({
+  name: cloudNameSchema,
+  folderId: z.uuid().nullable(),
+  expectedRevision: z.number().int().positive(),
+}).strict();
+
+export type UpdateNoteMetadataRequest = z.infer<typeof updateNoteMetadataRequestSchema>;
+
 export const createFolderRequestSchema = z.object({
-  path: localPathSchema,
+  name: cloudNameSchema,
+  parentId: z.uuid().nullable().default(null),
 }).strict();
 
 export type CreateFolderRequest = z.infer<typeof createFolderRequestSchema>;
 
-export const renamePathRequestSchema = z.object({
-  oldPath: localPathSchema,
-  newPath: localPathSchema,
+export const updateFolderRequestSchema = z.object({
+  name: cloudNameSchema,
+  parentId: z.uuid().nullable(),
 }).strict();
 
-export type RenamePathRequest = z.infer<typeof renamePathRequestSchema>;
+export type UpdateFolderRequest = z.infer<typeof updateFolderRequestSchema>;
+
+export const revisionMutationRequestSchema = z.object({
+  expectedRevision: z.number().int().positive(),
+}).strict();
+
+export type RevisionMutationRequest = z.infer<typeof revisionMutationRequestSchema>;
 
 export const noteIdSchema = z.uuid();
 

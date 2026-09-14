@@ -2,21 +2,19 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import {
-  loadConfig,
-  saveConfig,
-  getConfig,
-} from './config.ts';
-import {
   BiblePassageError,
   fetchBiblePassage,
   getBibleStatus,
 } from './bible.ts';
 import {
   biblePassageQuerySchema,
+  createFolderRequestSchema,
   createNoteRequestSchema,
+  revisionMutationRequestSchema,
   saveNoteRequestSchema,
   searchQuerySchema,
-  updateAppConfigSchema,
+  updateFolderRequestSchema,
+  updateNoteMetadataRequestSchema,
   noteIdSchema,
   type AuthSession,
 } from '../shared/contracts.ts';
@@ -38,22 +36,18 @@ import {
 
 
 // Parse CLI flags
-function parseArgs(): { port: number; dir?: string } {
+function parseArgs(): { port: number } {
   const args = process.argv.slice(2);
   let port = 3001;
-  let dir: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--port' && args[i + 1]) {
       port = parseInt(args[i + 1], 10) || 3001;
       i++;
-    } else if (args[i] === '--dir' && args[i + 1]) {
-      dir = args[i + 1];
-      i++;
     }
   }
 
-  return { port, dir };
+  return { port };
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +65,7 @@ export function createApp(options: CreateAppOptions = {}) {
   // Only the local Vite client may call the development API cross-origin.
   app.use('*', cors({
     origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Authorization', 'Content-Type'],
   }));
 
@@ -96,15 +90,6 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
 
-// Config
-app.get('/api/config', (c) => {
-  return c.json(getConfig());
-});
-
-app.put('/api/config', async (c) => {
-  const updates = await parseJsonBody(c, updateAppConfigSchema);
-  return c.json(await saveConfig(updates));
-});
 
 // Bible passages
 app.get('/api/bible/status', (c) => {
@@ -173,18 +158,74 @@ app.put('/api/notes/:id', async (c) => {
   }, id, body));
 });
 
-// Remaining cloud mutations arrive in Phase 5. Refuse them rather than
-// accidentally mutating the preserved Markdown source directory.
-app.delete('/api/notes/:id', () => {
-  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Cloud note deletion is not available yet.');
+app.put('/api/notes/:id/metadata', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  const body = await parseJsonBody(c, updateNoteMetadataRequestSchema);
+  return c.json(await noteStore.updateNote({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id, body));
 });
 
-app.post('/api/folders', () => {
-  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Cloud folder creation is not available yet.');
+app.delete('/api/notes/:id', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  const body = await parseJsonBody(c, revisionMutationRequestSchema);
+  await noteStore.deleteNote({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id, body);
+  return c.json({ success: true as const });
 });
 
-app.post('/api/rename', () => {
-  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Cloud rename and move are not available yet.');
+app.post('/api/notes/:id/restore', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  const body = await parseJsonBody(c, revisionMutationRequestSchema);
+  return c.json(await noteStore.restoreNote({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id, body));
+});
+
+app.post('/api/folders', async (c) => {
+  const body = await parseJsonBody(c, createFolderRequestSchema);
+  return c.json(await noteStore.createFolder({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, body), 201);
+});
+
+app.put('/api/folders/:id', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  const body = await parseJsonBody(c, updateFolderRequestSchema);
+  return c.json(await noteStore.updateFolder({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id, body));
+});
+
+app.delete('/api/folders/:id', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  await noteStore.deleteFolder({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id);
+  return c.json({ success: true as const });
+});
+
+app.post('/api/folders/:id/restore', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  await noteStore.restoreFolder({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id);
+  return c.json({ success: true as const });
+});
+
+app.get('/api/trash', async (c) => {
+  return c.json(await noteStore.listDeleted({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }));
 });
 
 app.get('/api/search', async (c) => {
@@ -223,8 +264,7 @@ const app = createApp();
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const { port, dir } = parseArgs();
-  await loadConfig(dir);
+  const { port } = parseArgs();
 
   console.log(`[Notes] Server running on http://127.0.0.1:${port}`);
 

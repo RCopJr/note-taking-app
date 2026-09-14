@@ -23,7 +23,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'bible' | 'keymaps'>('general');
-  const [notesDir, setNotesDir] = useState<string>('');
   const [leaderKey, setLeaderKey] = useState<string>('<Space>');
 
   const [fontSize, setFontSize] = useState<number>(15);
@@ -43,7 +42,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   useEffect(() => {
     if (config && isOpen) {
-      setNotesDir(config.notesDir);
       setLeaderKey(config.leaderKey);
       setFontSize(config.editor.fontSize);
       setFontFamily(config.editor.fontFamily);
@@ -83,7 +81,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsSaving(true);
     try {
       await onSave({
-        notesDir: notesDir.trim(),
         leaderKey: leaderKey.trim() || '<Space>',
         vimKeymaps: keymaps,
         editor: {
@@ -191,21 +188,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="min-h-0 flex-1 overflow-y-auto p-4 text-sm space-y-4">
           {activeTab === 'general' && (
             <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-editor-text font-semibold block">
-                  Notes Storage Directory
-                </label>
-                <input
-                  type="text"
-                  value={notesDir}
-                  onChange={(e) => setNotesDir(e.target.value)}
-                  placeholder="~/notes"
-                  className="w-full bg-editor-bg border border-editor-border rounded px-3 py-1.5 font-mono text-editor-text placeholder:text-editor-muted focus:outline-none focus:border-editor-accent focus:ring-2 focus:ring-editor-accent"
-                />
-                <p className="text-sm text-editor-muted">
-                  Source of truth directory on your machine. Files are plain .md and .txt indexed automatically.
-                </p>
-              </div>
+              <p className="text-sm text-editor-muted">
+                Preferences are stored on this device. Notes and folders remain cloud-backed.
+              </p>
 
               <div className="space-y-1">
                 <label className="text-editor-text font-semibold block">

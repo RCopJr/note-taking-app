@@ -2,10 +2,11 @@ import type { ZodType } from 'zod/v4';
 import {
   apiErrorResponseSchema,
   authSessionSchema,
-  appConfigSchema,
   biblePassageSchema,
   bibleStatusSchema,
+  deletedNodesSchema,
   fileTreeSchema,
+  folderMetadataSchema,
   ftsSearchResultsSchema,
   noteDocumentSchema,
   noteMetadataSchema,
@@ -13,15 +14,15 @@ import {
   tagCountsSchema,
   type ApiErrorCode,
   type AuthSession,
-  type AppConfig,
   type BiblePassage,
   type BibleStatus,
+  type DeletedNode,
   type FileNode,
+  type FolderMetadata,
   type FtsSearchResult,
   type NoteDocument,
   type NoteMetadata,
   type TagCount,
-  type UpdateAppConfig,
 } from '../shared/contracts.ts';
 
 const BASE_URL = '/api';
@@ -94,19 +95,6 @@ export async function fetchSession(): Promise<AuthSession> {
   return handleResponse(res, authSessionSchema);
 }
 
-export async function fetchConfig(): Promise<AppConfig> {
-  const res = await apiFetch(`${BASE_URL}/config`);
-  return handleResponse(res, appConfigSchema);
-}
-
-export async function updateConfig(updates: UpdateAppConfig): Promise<AppConfig> {
-  const res = await apiFetch(`${BASE_URL}/config`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
-  });
-  return handleResponse(res, appConfigSchema);
-}
 
 export async function fetchBibleStatus(): Promise<BibleStatus> {
   const res = await apiFetch(`${BASE_URL}/bible/status`);
@@ -163,30 +151,69 @@ export async function createNote(
   return handleResponse(res, noteDocumentSchema);
 }
 
-export async function deleteNote(id: string): Promise<void> {
-  const encoded = id.split('/').map(encodeURIComponent).join('/');
-  const res = await apiFetch(`${BASE_URL}/notes/${encoded}`, {
+export async function updateNoteMetadata(
+  id: string,
+  name: string,
+  folderId: string | null,
+  expectedRevision: number,
+): Promise<NoteDocument> {
+  const res = await apiFetch(`${BASE_URL}/notes/${encodeURIComponent(id)}/metadata`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, folderId, expectedRevision }),
+  });
+  return handleResponse(res, noteDocumentSchema);
+}
+
+export async function deleteNote(id: string, expectedRevision: number): Promise<void> {
+  const res = await apiFetch(`${BASE_URL}/notes/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedRevision }),
   });
   await handleResponse(res, successResponseSchema);
 }
 
-export async function createFolder(path: string): Promise<void> {
+export async function restoreNote(id: string, expectedRevision: number): Promise<NoteDocument> {
+  const res = await apiFetch(`${BASE_URL}/notes/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedRevision }),
+  });
+  return handleResponse(res, noteDocumentSchema);
+}
+
+export async function createFolder(name: string, parentId: string | null = null): Promise<FolderMetadata> {
   const res = await apiFetch(`${BASE_URL}/folders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path }),
+    body: JSON.stringify({ name, parentId }),
   });
+  return handleResponse(res, folderMetadataSchema);
+}
+
+export async function updateFolder(id: string, name: string, parentId: string | null): Promise<FolderMetadata> {
+  const res = await apiFetch(`${BASE_URL}/folders/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, parentId }),
+  });
+  return handleResponse(res, folderMetadataSchema);
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  const res = await apiFetch(`${BASE_URL}/folders/${encodeURIComponent(id)}`, { method: 'DELETE' });
   await handleResponse(res, successResponseSchema);
 }
 
-export async function renamePath(oldPath: string, newPath: string): Promise<void> {
-  const res = await apiFetch(`${BASE_URL}/rename`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ oldPath, newPath }),
-  });
+export async function restoreFolder(id: string): Promise<void> {
+  const res = await apiFetch(`${BASE_URL}/folders/${encodeURIComponent(id)}/restore`, { method: 'POST' });
   await handleResponse(res, successResponseSchema);
+}
+
+export async function fetchTrash(): Promise<DeletedNode[]> {
+  const res = await apiFetch(`${BASE_URL}/trash`);
+  return handleResponse(res, deletedNodesSchema);
 }
 
 export async function searchNotes(query: string, limit: number = 30): Promise<FtsSearchResult[]> {
