@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(34);
 
 select ok(
   to_regclass('public.folders') is not null,
@@ -38,6 +38,23 @@ select ok(
 select ok(
   to_regclass('public.notes_active_search_idx') is not null,
   'notes have a full-text search index'
+);
+
+select has_column('public', 'notes', 'title', 'notes store derived titles');
+select has_column('public', 'notes', 'tags', 'notes store derived tags');
+
+select has_function(
+  'public',
+  'save_note',
+  array['uuid', 'text', 'bigint', 'text', 'text[]', 'text'],
+  'revision-aware save function exists'
+);
+
+select has_function(
+  'public',
+  'search_notes',
+  array['text', 'integer'],
+  'cloud note search function exists'
 );
 
 select throws_ok(
@@ -107,9 +124,10 @@ select throws_ok(
 
 set local role anon;
 
-select results_eq(
+select throws_ok(
   $$select count(*) from public.notes$$,
-  array[0::bigint],
+  '42501',
+  null,
   'anonymous users cannot read notes'
 );
 
@@ -166,5 +184,62 @@ select lives_ok(
   'a user can create their own note'
 );
 
+
+select results_eq(
+  $$select outcome from public.save_note(
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+    '# Cloud Welcome',
+    1,
+    'Cloud Welcome',
+    array['cloud'],
+    'welcome.md Cloud Welcome cloud # Cloud Welcome'
+  )$$,
+  array['saved'::text],
+  'a current revision saves successfully'
+);
+
+select results_eq(
+  $$select revision from public.notes where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1'$$,
+  array[2::bigint],
+  'an accepted save advances the revision'
+);
+
+select results_eq(
+  $$select outcome from public.save_note(
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1',
+    '# Stale overwrite',
+    1,
+    'Stale overwrite',
+    array[]::text[],
+    'stale overwrite'
+  )$$,
+  array['conflict'::text],
+  'a stale revision reports a conflict'
+);
+
+select results_eq(
+  $$select content from public.notes where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1'$$,
+  array['# Cloud Welcome'::text],
+  'a stale save does not overwrite committed content'
+);
+
+select results_eq(
+  $$select outcome from public.save_note(
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',
+    '# Hidden overwrite',
+    1,
+    'Hidden overwrite',
+    array[]::text[],
+    'hidden overwrite'
+  )$$,
+  array['not_found'::text],
+  'another owner note is indistinguishable from a missing note'
+);
+
+select results_eq(
+  $$select note_id from public.search_notes('Cloud Welcome', 30)$$,
+  array['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1'::uuid],
+  'search finds committed content owned by the user'
+);
 select * from finish();
 rollback;

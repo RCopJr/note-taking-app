@@ -5,7 +5,7 @@ import type {
   ApiErrorResponse,
 } from '../shared/contracts.ts';
 
-type ApiErrorStatus = 400 | 401 | 403 | 404 | 409 | 500 | 502 | 503;
+type ApiErrorStatus = 400 | 401 | 403 | 404 | 409 | 500 | 501 | 502 | 503;
 export class ApiError extends Error {
   readonly status: ApiErrorStatus;
   readonly code: ApiErrorCode;

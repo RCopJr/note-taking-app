@@ -82,6 +82,11 @@ export type Database = {
           name: string
           owner_id: string
           revision: number
+          search_text: string
+          search_vector: unknown
+          size: number | null
+          tags: string[]
+          title: string
           updated_at: string
         }
         Insert: {
@@ -93,6 +98,11 @@ export type Database = {
           name: string
           owner_id: string
           revision?: number
+          search_text?: string
+          search_vector?: unknown
+          size?: number | null
+          tags?: string[]
+          title?: string
           updated_at?: string
         }
         Update: {
@@ -104,6 +114,11 @@ export type Database = {
           name?: string
           owner_id?: string
           revision?: number
+          search_text?: string
+          search_vector?: unknown
+          size?: number | null
+          tags?: string[]
+          title?: string
           updated_at?: string
         }
         Relationships: [
@@ -121,7 +136,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      save_note: {
+        Args: {
+          p_content: string
+          p_expected_revision: number
+          p_id: string
+          p_search_text: string
+          p_tags: string[]
+          p_title: string
+        }
+        Returns: {
+          content: string
+          folder_id: string
+          name: string
+          note_id: string
+          outcome: string
+          revision: number
+          size: number
+          tags: string[]
+          title: string
+          updated_at: string
+        }[]
+      }
+      search_notes: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          note_id: string
+          rank: number
+          snippet: string
+          tags: string[]
+          title: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

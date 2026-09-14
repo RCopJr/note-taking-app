@@ -4,11 +4,14 @@ const timestampSchema = z.number().finite().nonnegative();
 const tagSchema = z.string().trim().min(1).max(100);
 
 export const noteMetadataSchema = z.object({
-  id: z.string().min(1),
+  id: z.uuid(),
   path: z.string().min(1),
+  name: z.string().trim().min(1).max(255),
+  folderId: z.uuid().nullable(),
   title: z.string(),
   tags: z.array(tagSchema),
   size: z.number().int().nonnegative(),
+  revision: z.number().int().positive(),
   updatedAt: timestampSchema,
 }).strict();
 
@@ -130,7 +133,12 @@ export const localPathSchema = z.string()
   );
 
 export const createNoteRequestSchema = z.object({
-  id: localPathSchema,
+  name: z.string()
+    .trim()
+    .min(1)
+    .max(255)
+    .refine((value) => !value.includes('/') && !value.includes('\\'), 'A note name cannot contain path separators.'),
+  folderId: z.uuid().nullable().default(null),
   content: z.string().default(''),
 }).strict();
 
@@ -138,6 +146,7 @@ export type CreateNoteRequest = z.infer<typeof createNoteRequestSchema>;
 
 export const saveNoteRequestSchema = z.object({
   content: z.string(),
+  expectedRevision: z.number().int().positive(),
 }).strict();
 
 export type SaveNoteRequest = z.infer<typeof saveNoteRequestSchema>;
@@ -154,6 +163,8 @@ export const renamePathRequestSchema = z.object({
 }).strict();
 
 export type RenamePathRequest = z.infer<typeof renamePathRequestSchema>;
+
+export const noteIdSchema = z.uuid();
 
 export const searchQuerySchema = z.object({
   q: z.string().max(500).default(''),
@@ -186,9 +197,11 @@ export const apiErrorCodeSchema = z.enum([
   'UNAUTHENTICATED',
   'FORBIDDEN',
   'NOT_FOUND',
+  'ALREADY_EXISTS',
   'REVISION_CONFLICT',
   'EXTERNAL_SERVICE_ERROR',
   'CONFIGURATION_ERROR',
+  'NOT_IMPLEMENTED',
   'INTERNAL_ERROR',
 ]);
 

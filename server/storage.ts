@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import { watch } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import path from 'node:path';
-import matter from 'gray-matter';
+import { parseMarkdownMetadata } from './markdown.ts';
 import {
   indexNote,
   deleteNoteFromDb,
@@ -25,47 +25,6 @@ export interface StorageProvider {
   syncAllNotes(): Promise<number>;
 }
 
-export function parseNoteMetadata(relativePath: string, rawContent: string): {
-  title: string;
-  tags: string[];
-  cleanContent: string;
-} {
-  let title = '';
-  let tags: string[] = [];
-  let cleanContent = rawContent;
-
-  try {
-    const parsed = matter(rawContent);
-    cleanContent = parsed.content;
-
-    if (parsed.data.title && typeof parsed.data.title === 'string') {
-      title = parsed.data.title;
-    }
-
-    if (Array.isArray(parsed.data.tags)) {
-      tags = parsed.data.tags.map((t: unknown) => String(t).trim().toLowerCase()).filter(Boolean);
-    } else if (typeof parsed.data.tags === 'string') {
-      tags = parsed.data.tags.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean);
-    }
-  } catch {
-    // If frontmatter parsing fails, treat as plain text
-  }
-
-  // If no frontmatter title, look for first markdown heading: # My Title
-  if (!title) {
-    const headingMatch = cleanContent.match(/^#\s+(.+)$/m);
-    if (headingMatch && headingMatch[1]) {
-      title = headingMatch[1].trim();
-    }
-  }
-
-  // Fallback to filename without extension
-  if (!title) {
-    title = path.basename(relativePath).replace(/\.(md|txt)$/i, '');
-  }
-
-  return { title, tags, cleanContent };
-}
 
 export class LocalFileStorageProvider implements StorageProvider {
   private notesDir: string;
@@ -142,15 +101,18 @@ export class LocalFileStorageProvider implements StorageProvider {
     const fullPath = this.resolvePath(id);
     const rawContent = await fs.readFile(fullPath, 'utf-8');
     const stats = await fs.stat(fullPath);
-    const { title, tags } = parseNoteMetadata(id, rawContent);
+    const { title, tags } = parseMarkdownMetadata(id, rawContent);
 
     return {
       id,
       path: id,
+      name: path.basename(id),
+      folderId: null,
       title,
       content: rawContent,
       tags,
       size: stats.size,
+      revision: 1,
       updatedAt: stats.mtimeMs,
     };
   }
@@ -166,7 +128,7 @@ export class LocalFileStorageProvider implements StorageProvider {
     await fs.writeFile(fullPath, content, 'utf-8');
 
     const stats = await fs.stat(fullPath);
-    const { title, tags } = parseNoteMetadata(normalizedId, content);
+    const { title, tags } = parseMarkdownMetadata(normalizedId, content);
 
     indexNote(
       normalizedId,
@@ -181,10 +143,13 @@ export class LocalFileStorageProvider implements StorageProvider {
     return {
       id: normalizedId,
       path: normalizedId,
+      name: path.basename(normalizedId),
+      folderId: null,
       title,
       content,
       tags,
       size: stats.size,
+      revision: 1,
       updatedAt: stats.mtimeMs,
     };
   }
@@ -222,7 +187,7 @@ export class LocalFileStorageProvider implements StorageProvider {
     const stats = await fs.stat(newFull);
     if (stats.isFile()) {
       const content = await fs.readFile(newFull, 'utf-8');
-      const { title, tags } = parseNoteMetadata(newPath, content);
+      const { title, tags } = parseMarkdownMetadata(newPath, content);
       indexNote(newPath, newPath, title, content, tags, stats.size, stats.mtimeMs);
     } else if (stats.isDirectory()) {
       await this.syncAllNotes();
@@ -260,7 +225,7 @@ export class LocalFileStorageProvider implements StorageProvider {
           // Re-index if not in DB or mtime changed
           if (!currentMeta || currentMeta.updatedAt !== stats.mtimeMs) {
             const content = await fs.readFile(fullPath, 'utf-8');
-            const { title, tags } = parseNoteMetadata(relPath, content);
+            const { title, tags } = parseMarkdownMetadata(relPath, content);
             indexNote(relPath, relPath, title, content, tags, stats.size, stats.mtimeMs);
             indexedCount++;
           }
