@@ -161,11 +161,53 @@ export type Database = {
       search_notes: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
+          folder_id: string
           note_id: string
+          note_name: string
           rank: number
           snippet: string
           tags: string[]
           title: string
+        }[]
+      }
+      set_folder_deleted: {
+        Args: { p_deleted: boolean; p_id: string }
+        Returns: string
+      }
+      set_note_deleted: {
+        Args: { p_deleted: boolean; p_expected_revision: number; p_id: string }
+        Returns: {
+          content: string
+          folder_id: string
+          name: string
+          note_id: string
+          outcome: string
+          revision: number
+          size: number
+          tags: string[]
+          title: string
+          updated_at: string
+        }[]
+      }
+      update_note_metadata: {
+        Args: {
+          p_expected_revision: number
+          p_folder_id: string
+          p_id: string
+          p_name: string
+          p_search_text: string
+        }
+        Returns: {
+          content: string
+          folder_id: string
+          name: string
+          note_id: string
+          outcome: string
+          revision: number
+          size: number
+          tags: string[]
+          title: string
+          updated_at: string
         }[]
       }
     }

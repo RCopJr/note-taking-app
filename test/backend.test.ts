@@ -30,7 +30,12 @@ const noteStore: CloudNoteStore = {
   },
   async listTree(context) {
     return context.userId === ALICE_ID
-      ? [{ name: note.name, path: note.id, type: 'file', size: note.size, updatedAt: note.updatedAt }]
+      ? [{ name: note.name, path: note.id, parentId: note.folderId, type: 'file', size: note.size, revision: note.revision, updatedAt: note.updatedAt }]
+      : [];
+  },
+  async listDeleted(context) {
+    return context.userId === ALICE_ID
+      ? [{ id: note.id, name: note.name, type: 'file', revision: note.revision, deletedAt: 1 }]
       : [];
   },
   async getNote(context, id) {
@@ -68,9 +73,44 @@ const noteStore: CloudNoteStore = {
     };
     return note;
   },
+  async updateNote(context, id, input) {
+    if (context.userId !== ALICE_ID || id !== NOTE_ID) {
+      throw new ApiError(404, 'NOT_FOUND', 'The requested note was not found.');
+    }
+    if (input.expectedRevision !== note.revision) {
+      throw new ApiError(409, 'REVISION_CONFLICT', 'The note changed after it was opened.', { current: note });
+    }
+    note = {
+      ...note,
+      name: input.name,
+      path: input.name,
+      folderId: input.folderId,
+      revision: note.revision + 1,
+    };
+    return note;
+  },
+  async deleteNote() {},
+  async restoreNote() {
+    return note;
+  },
+  async createFolder(context, input) {
+    assert.equal(context.userId, ALICE_ID);
+    return {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+      name: input.name,
+      parentId: input.parentId,
+      updatedAt: 1,
+    };
+  },
+  async updateFolder(context, id, input) {
+    assert.equal(context.userId, ALICE_ID);
+    return { id, name: input.name, parentId: input.parentId, updatedAt: 2 };
+  },
+  async deleteFolder() {},
+  async restoreFolder() {},
   async searchNotes(context, query) {
     return context.userId === ALICE_ID && note.content.includes(query)
-      ? [{ id: note.id, title: note.title, snippet: note.content, tags: note.tags, rank: 1 }]
+      ? [{ id: note.id, path: note.path, title: note.title, snippet: note.content, tags: note.tags, rank: 1 }]
       : [];
   },
   async listTags(context) {
@@ -143,4 +183,36 @@ test('cloud note API validates UUIDs and revision-aware saves', async () => {
   assert.equal(conflict.error.code, 'REVISION_CONFLICT');
   assert.equal(conflict.error.details.current.content, '# Saved');
   assert.equal(conflict.error.details.current.revision, 2);
+});
+
+test('cloud tree mutations use stable UUIDs and explicit revisions', async () => {
+  const folder = await request('/api/folders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Projects', parentId: null }),
+  });
+  assert.equal(folder.status, 201);
+  assert.equal((await folder.json()).id, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1');
+
+  const renamed = await request(`/api/notes/${NOTE_ID}/metadata`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'renamed.md', folderId: null, expectedRevision: 2 }),
+  });
+  assert.equal(renamed.status, 200);
+  const renamedNote = await renamed.json();
+  assert.equal(renamedNote.id, NOTE_ID);
+  assert.equal(renamedNote.revision, 3);
+
+  const deleted = await request(`/api/notes/${NOTE_ID}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedRevision: 3 }),
+  });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await deleted.json(), { success: true });
+
+  const trash = await request('/api/trash');
+  assert.equal(trash.status, 200);
+  assert.equal((await trash.json())[0].id, NOTE_ID);
 });

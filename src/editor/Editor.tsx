@@ -97,7 +97,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
         try {
           await onSaveRef.current(content);
         } catch (error) {
-          setSaveStatus('Save failed');
+          setSaveStatus(
+            typeof error === 'object' && error !== null && 'code' in error && error.code === 'REVISION_CONFLICT'
+              ? 'Conflict — newer cloud version'
+              : 'Save failed',
+          );
           throw error;
         }
 

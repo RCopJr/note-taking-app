@@ -13,6 +13,20 @@ export interface TelescopeModalProps {
   onClose: () => void;
 }
 
+function renderHighlightedSnippet(snippet: string): React.ReactNode[] {
+  return snippet.split(/(<mark>|<\/mark>)/).reduce<{ highlighted: boolean; nodes: React.ReactNode[] }>(
+    (state, part, index) => {
+      if (part === '<mark>') return { ...state, highlighted: true };
+      if (part === '</mark>') return { ...state, highlighted: false };
+      if (part) {
+        state.nodes.push(state.highlighted ? <mark key={index}>{part}</mark> : part);
+      }
+      return state;
+    },
+    { highlighted: false, nodes: [] },
+  ).nodes;
+}
+
 export const TelescopeModal: React.FC<TelescopeModalProps> = ({
   isOpen,
   initialMode = 'files',
@@ -324,16 +338,15 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                         {result.title}
                       </span>
                       <span className="font-mono text-xs text-editor-muted truncate">
-                        ({result.id})
+                        ({result.path})
                       </span>
                     </div>
                   </div>
 
-                  {/* Highlighted Snippet */}
-                  <div
-                    className="text-sm leading-relaxed text-editor-text bg-editor-bg px-2 py-1 rounded border border-editor-border overflow-hidden truncate [&>mark]:bg-editor-active [&>mark]:text-editor-accent [&>mark]:font-semibold [&>mark]:underline [&>mark]:decoration-editor-muted [&>mark]:underline-offset-2 [&>mark]:px-0.5 [&>mark]:rounded"
-                    dangerouslySetInnerHTML={{ __html: result.snippet }}
-                  />
+                  {/* PostgreSQL supplies only mark delimiters; React escapes note text. */}
+                  <div className="text-sm leading-relaxed text-editor-text bg-editor-bg px-2 py-1 rounded border border-editor-border overflow-hidden truncate [&>mark]:bg-editor-active [&>mark]:text-editor-accent [&>mark]:font-semibold [&>mark]:underline [&>mark]:decoration-editor-muted [&>mark]:underline-offset-2 [&>mark]:px-0.5 [&>mark]:rounded">
+                    {renderHighlightedSnippet(result.snippet)}
+                  </div>
                 </div>
               );
             })
