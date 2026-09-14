@@ -133,26 +133,32 @@ export async function fetchNotes(): Promise<NoteMetadata[]> {
 }
 
 export async function fetchNote(id: string): Promise<NoteDocument> {
-  const encoded = id.split('/').map(encodeURIComponent).join('/');
-  const res = await apiFetch(`${BASE_URL}/notes/${encoded}`);
+  const res = await apiFetch(`${BASE_URL}/notes/${encodeURIComponent(id)}`);
   return handleResponse(res, noteDocumentSchema);
 }
 
-export async function saveNoteContent(id: string, content: string): Promise<NoteDocument> {
-  const encoded = id.split('/').map(encodeURIComponent).join('/');
-  const res = await apiFetch(`${BASE_URL}/notes/${encoded}`, {
+export async function saveNoteContent(
+  id: string,
+  content: string,
+  expectedRevision: number,
+): Promise<NoteDocument> {
+  const res = await apiFetch(`${BASE_URL}/notes/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, expectedRevision }),
   });
   return handleResponse(res, noteDocumentSchema);
 }
 
-export async function createNote(id: string, content: string = ''): Promise<NoteDocument> {
+export async function createNote(
+  name: string,
+  folderId: string | null = null,
+  content: string = '',
+): Promise<NoteDocument> {
   const res = await apiFetch(`${BASE_URL}/notes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, content }),
+    body: JSON.stringify({ name, folderId, content }),
   });
   return handleResponse(res, noteDocumentSchema);
 }

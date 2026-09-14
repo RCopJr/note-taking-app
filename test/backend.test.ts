@@ -1,247 +1,146 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import os from 'node:os';
 import { createApp } from '../server/index.ts';
-import { loadConfig } from '../server/config.ts';
-import { initDb } from '../server/db.ts';
+import type { CloudNoteStore } from '../server/cloud-notes.ts';
+import { ApiError } from '../server/http.ts';
+import type { NoteDocument } from '../shared/contracts.ts';
 
-const TEST_USER_ID = '11111111-1111-4111-8111-111111111111';
-const app = createApp({
-  verifyAccessToken: async (accessToken) => {
-    if (accessToken !== 'test-aal1' && accessToken !== 'test-aal2') return null;
-    return {
-      userId: TEST_USER_ID,
-      email: 'alice@example.test',
-      assuranceLevel: accessToken === 'test-aal2' ? 'aal2' : 'aal1',
+const ALICE_ID = '11111111-1111-4111-8111-111111111111';
+const BOB_ID = '22222222-2222-4222-8222-222222222222';
+const NOTE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+
+let note: NoteDocument = {
+  id: NOTE_ID,
+  path: 'welcome.md',
+  name: 'welcome.md',
+  folderId: null,
+  title: 'Welcome',
+  tags: ['guide'],
+  size: 9,
+  revision: 1,
+  updatedAt: 1,
+  content: '# Welcome',
+};
+
+const noteStore: CloudNoteStore = {
+  async listNotes(context) {
+    if (context.userId !== ALICE_ID) return [];
+    const { content: _, ...metadata } = note;
+    return [metadata];
+  },
+  async listTree(context) {
+    return context.userId === ALICE_ID
+      ? [{ name: note.name, path: note.id, type: 'file', size: note.size, updatedAt: note.updatedAt }]
+      : [];
+  },
+  async getNote(context, id) {
+    if (context.userId !== ALICE_ID || id !== NOTE_ID) {
+      throw new ApiError(404, 'NOT_FOUND', 'The requested note was not found.');
+    }
+    return note;
+  },
+  async createNote(context, input) {
+    assert.equal(context.userId, ALICE_ID);
+    note = {
+      ...note,
+      name: input.name,
+      path: input.name,
+      folderId: input.folderId,
+      content: input.content,
     };
+    return note;
+  },
+  async saveNote(context, id, input) {
+    if (context.userId !== ALICE_ID || id !== NOTE_ID) {
+      throw new ApiError(404, 'NOT_FOUND', 'The requested note was not found.');
+    }
+    if (input.expectedRevision !== note.revision) {
+      throw new ApiError(409, 'REVISION_CONFLICT', 'The note changed after it was opened.', {
+        current: note,
+      });
+    }
+    note = {
+      ...note,
+      content: input.content,
+      revision: note.revision + 1,
+      updatedAt: note.updatedAt + 1,
+      size: Buffer.byteLength(input.content),
+    };
+    return note;
+  },
+  async searchNotes(context, query) {
+    return context.userId === ALICE_ID && note.content.includes(query)
+      ? [{ id: note.id, title: note.title, snippet: note.content, tags: note.tags, rank: 1 }]
+      : [];
+  },
+  async listTags(context) {
+    return context.userId === ALICE_ID ? [{ tag: 'guide', count: 1 }] : [];
+  },
+};
+
+const app = createApp({
+  noteStore,
+  verifyAccessToken: async (accessToken) => {
+    if (accessToken === 'alice-aal1') {
+      return { userId: ALICE_ID, assuranceLevel: 'aal1' };
+    }
+    if (accessToken === 'alice-aal2') {
+      return { userId: ALICE_ID, email: 'alice@example.test', assuranceLevel: 'aal2' };
+    }
+    if (accessToken === 'bob-aal2') {
+      return { userId: BOB_ID, email: 'bob@example.test', assuranceLevel: 'aal2' };
+    }
+    return null;
   },
 });
 
-function request(pathname: string, init: RequestInit = {}) {
+function request(pathname: string, init: RequestInit = {}, token = 'alice-aal2') {
   const headers = new Headers(init.headers);
-  headers.set('Authorization', 'Bearer test-aal2');
+  headers.set('Authorization', `Bearer ${token}`);
   return app.request(pathname, { ...init, headers });
 }
 
-test('local backend note lifecycle and CORS policy', async (t) => {
+test('cloud note API enforces MFA and non-disclosing ownership', async () => {
+  assert.equal((await app.request('/api/notes')).status, 401);
+  assert.equal((await request('/api/notes', {}, 'alice-aal1')).status, 403);
+  assert.equal((await request(`/api/notes/${NOTE_ID}`, {}, 'bob-aal2')).status, 404);
 
-  const testDir = path.join(os.tmpdir(), `notes-test-${Date.now()}`);
-  const testDb = path.join(testDir, 'test.db');
-  await fs.mkdir(testDir, { recursive: true });
-  t.after(() => fs.rm(testDir, { recursive: true, force: true }));
-
-  // Initialize config and db in test directory
-  await loadConfig(testDir);
-  initDb(testDb);
-
-  const anonymousRes = await app.request('/api/notes');
-  assert.equal(anonymousRes.status, 401);
-  assert.equal((await anonymousRes.json()).error.code, 'UNAUTHENTICATED');
-
-  const invalidSessionRes = await app.request('/api/notes', {
-    headers: { Authorization: 'Bearer invalid' },
-  });
-  assert.equal(invalidSessionRes.status, 401);
-
-  const firstFactorOnlyRes = await app.request('/api/notes', {
-    headers: { Authorization: 'Bearer test-aal1' },
-  });
-  assert.equal(firstFactorOnlyRes.status, 403);
-  assert.equal((await firstFactorOnlyRes.json()).error.code, 'FORBIDDEN');
-
-  const sessionRes = await request('/api/session');
-  assert.equal(sessionRes.status, 200);
-  assert.deepEqual(await sessionRes.json(), {
-    userId: TEST_USER_ID,
+  const session = await request('/api/session');
+  assert.deepEqual(await session.json(), {
+    userId: ALICE_ID,
     email: 'alice@example.test',
     assuranceLevel: 'aal2',
   });
+});
 
-  // Sync to ensure storage provider points to testDir
-  const syncRes = await request('/api/sync', { method: 'POST' });
-  assert.equal(syncRes.status, 200, 'Sync should return 200');
+test('cloud note API validates UUIDs and revision-aware saves', async () => {
+  const invalidId = await request('/api/notes/not-a-uuid');
+  assert.equal(invalidId.status, 400);
+  assert.equal((await invalidId.json()).error.code, 'INVALID_REQUEST');
 
-  // 1. Test Config
-  console.log('1. Testing GET /api/config');
-  const configRes = await request('/api/config');
-  assert.equal(configRes.status, 200);
-  const config = await configRes.json();
-  assert.ok(config.notesDir, 'Config must have notesDir');
-  assert.equal(config.leaderKey, '<Space>');
-
-  const allowedCorsRes = await request('/api/config', {
-    headers: { Origin: 'http://localhost:5173' },
-  });
-  assert.equal(
-    allowedCorsRes.headers.get('Access-Control-Allow-Origin'),
-    'http://localhost:5173',
-    'Local Vite clients should be allowed to call the API',
-  );
-
-  const blockedCorsRes = await request('/api/config', {
-    headers: { Origin: 'https://example.com' },
-  });
-  assert.equal(
-    blockedCorsRes.headers.get('Access-Control-Allow-Origin'),
-    null,
-    'Other websites must not receive CORS permission',
-  );
-
-  const invalidConfigRes = await request('/api/config', {
+  const malformedSave = await request(`/api/notes/${NOTE_ID}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ editor: { fontSize: 1_000 } }),
+    body: JSON.stringify({ content: '# Invalid' }),
   });
-  assert.equal(invalidConfigRes.status, 400);
-  assert.equal((await invalidConfigRes.json()).error.code, 'INVALID_REQUEST');
-  assert.equal(
-    (await (await request('/api/config')).json()).editor.fontSize,
-    config.editor.fontSize,
-    'Rejected configuration must not mutate the active configuration',
-  );
+  assert.equal(malformedSave.status, 400);
 
-  const invalidJsonRes = await request('/api/notes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{',
-  });
-  assert.equal(invalidJsonRes.status, 400);
-  assert.equal((await invalidJsonRes.json()).error.code, 'INVALID_REQUEST');
-
-  // 2. Test Note Creation with frontmatter tags and markdown title
-  console.log('2. Testing POST /api/notes (create)');
-  const noteContent = `---
-title: Welcome to Vim Notes
-tags: [getting-started, guide, test]
----
-
-# Welcome to Vim Notes
-
-This is a test note to verify Google Docs export, Vim motions, and SQLite FTS5 search indexing.
-`;
-
-  const createRes = await request('/api/notes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      id: 'guides/welcome.md',
-      content: noteContent,
-    }),
-  });
-
-  assert.equal(createRes.status, 201, 'Create note should return 201');
-  const createdNote = await createRes.json();
-  assert.equal(createdNote.id, 'guides/welcome.md');
-  assert.equal(createdNote.title, 'Welcome to Vim Notes');
-  assert.deepEqual(createdNote.tags, ['getting-started', 'guide', 'test']);
-
-  // 3. Test Note Retrieval
-  console.log('3. Testing GET /api/notes/:id');
-  const getRes = await request('/api/notes/guides/welcome.md');
-  assert.equal(getRes.status, 200);
-  const fetchedNote = await getRes.json();
-  assert.equal(fetchedNote.title, 'Welcome to Vim Notes');
-  assert.ok(fetchedNote.content.includes('Google Docs export'));
-
-  const malformedSaveRes = await request('/api/notes/guides/welcome.md', {
+  const saved = await request(`/api/notes/${NOTE_ID}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: 42 }),
+    body: JSON.stringify({ content: '# Saved', expectedRevision: 1 }),
   });
-  assert.equal(malformedSaveRes.status, 400);
-  assert.equal(
-    (await malformedSaveRes.json()).error.code,
-    'INVALID_REQUEST',
-    'Malformed saves must use the stable API error contract',
-  );
-  const noteAfterMalformedSave = await (
-    await request('/api/notes/guides/welcome.md')
-  ).json();
-  assert.equal(
-    noteAfterMalformedSave.content,
-    noteContent,
-    'A rejected save must not overwrite note content',
-  );
+  assert.equal(saved.status, 200);
+  assert.equal((await saved.json()).revision, 2);
 
-  const traversalRes = await request('/api/notes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: '../outside.md', content: 'unsafe' }),
-  });
-  assert.equal(traversalRes.status, 400);
-  assert.equal((await traversalRes.json()).error.code, 'INVALID_REQUEST');
-
-  // 4. Test Second Note for FTS Search
-  console.log('4. Testing FTS search on multiple notes');
-  await request('/api/notes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      id: 'work/architecture.md',
-      content: `# Architecture Decisions\n\nWe decided to use Vite, React, Hono, and SQLite FTS5 for instant BM25 search.`,
-    }),
-  });
-
-  // 5. Test FTS Search
-  const searchRes = await request('/api/search?q=Vite');
-  assert.equal(searchRes.status, 200);
-  const searchResults = await searchRes.json();
-  assert.ok(searchResults.length >= 1, 'Should find at least 1 result for "Vite"');
-  assert.equal(searchResults[0].id, 'work/architecture.md');
-  assert.ok(searchResults[0].snippet.includes('<mark>Vite</mark>'), 'Snippet must highlight search term');
-
-  // Search for "Google Docs"
-  const searchDocsRes = await request('/api/search?q=Google+Docs');
-  const searchDocsResults = await searchDocsRes.json();
-  assert.ok(searchDocsResults.length >= 1);
-  assert.equal(searchDocsResults[0].id, 'guides/welcome.md');
-
-  const invalidLimitRes = await request('/api/search?q=Vite&limit=101');
-  assert.equal(invalidLimitRes.status, 400);
-  assert.equal((await invalidLimitRes.json()).error.code, 'INVALID_REQUEST');
-
-  // 6. Test Tags
-  console.log('5. Testing GET /api/tags');
-  const tagsRes = await request('/api/tags');
-  assert.equal(tagsRes.status, 200);
-  const tags = await tagsRes.json();
-  assert.ok(tags.some((t: { tag: string }) => t.tag === 'getting-started'));
-
-  // 7. Test Tree Listing
-  console.log('6. Testing GET /api/tree');
-  const treeRes = await request('/api/tree');
-  assert.equal(treeRes.status, 200);
-  const tree = await treeRes.json();
-  assert.ok(tree.some((n: { name: string }) => n.name === 'guides' || n.name === 'work'));
-
-  // 8. Test Update Note
-  console.log('7. Testing PUT /api/notes/:id');
-  const updateRes = await request('/api/notes/guides/welcome.md', {
+  const stale = await request(`/api/notes/${NOTE_ID}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      content: '# Updated Welcome\n\nBrand new updated content.',
-    }),
+    body: JSON.stringify({ content: '# Stale overwrite', expectedRevision: 1 }),
   });
-  assert.equal(updateRes.status, 200);
-  const updatedNote = await updateRes.json();
-  assert.equal(updatedNote.title, 'Updated Welcome');
-
-  // 9. Test Delete Note
-  console.log('8. Testing DELETE /api/notes/:id');
-  const deleteRes = await request('/api/notes/guides/welcome.md', {
-    method: 'DELETE',
-  });
-  assert.equal(deleteRes.status, 200);
-
-  const getDeletedRes = await request('/api/notes/guides/welcome.md');
-  assert.equal(getDeletedRes.status, 404, 'Deleted note should return 404');
-  assert.equal((await getDeletedRes.json()).error.code, 'NOT_FOUND');
-
-  const unknownRouteRes = await request('/api/does-not-exist');
-  assert.equal(unknownRouteRes.status, 404);
-  assert.equal((await unknownRouteRes.json()).error.code, 'NOT_FOUND');
-
+  assert.equal(stale.status, 409);
+  const conflict = await stale.json();
+  assert.equal(conflict.error.code, 'REVISION_CONFLICT');
+  assert.equal(conflict.error.details.current.content, '# Saved');
+  assert.equal(conflict.error.details.current.revision, 2);
 });

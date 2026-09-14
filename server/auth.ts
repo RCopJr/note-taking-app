@@ -1,12 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from './supabase.ts';
 import { createMiddleware } from 'hono/factory';
-import { z } from 'zod/v4';
 import { ApiError } from './http.ts';
 
-const serverAuthConfigSchema = z.object({
-  url: z.url(),
-  anonKey: z.string().min(1),
-}).strict();
 
 export type AssuranceLevel = 'aal1' | 'aal2';
 
@@ -21,27 +16,14 @@ export type VerifyAccessToken = (accessToken: string) => Promise<AuthIdentity | 
 export interface AuthVariables {
   userId: string;
   authIdentity: AuthIdentity;
+  accessToken: string;
 }
 
 let defaultVerifier: VerifyAccessToken | null = null;
 
 function getDefaultVerifier(): VerifyAccessToken {
   if (defaultVerifier) return defaultVerifier;
-
-  const result = serverAuthConfigSchema.safeParse({
-    url: process.env.SUPABASE_URL,
-    anonKey: process.env.SUPABASE_ANON_KEY,
-  });
-  if (!result.success) {
-    throw new ApiError(503, 'CONFIGURATION_ERROR', 'Supabase authentication is not configured.');
-  }
-  const config = result.data;
-  const supabase = createClient(config.url, config.anonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  const supabase = createServerSupabaseClient();
 
   defaultVerifier = async (accessToken) => {
     const { data, error } = await supabase.auth.getClaims(accessToken);
@@ -86,6 +68,7 @@ export function requireAuthentication(
     }
 
     c.set('userId', identity.userId);
+    c.set('accessToken', accessToken);
     c.set('authIdentity', identity);
     await next();
   });

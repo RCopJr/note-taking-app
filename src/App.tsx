@@ -258,7 +258,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
 
   const handleSave = useCallback(async (content: string) => {
     if (!activeNote) return;
-    const updated = await saveNoteContent(activeNote.id, content);
+    const updated = await saveNoteContent(activeNote.id, content, activeNote.revision);
     setActiveNote(updated);
 
     // Update note title and metadata in list
@@ -267,20 +267,20 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     );
   }, [activeNote]);
 
-  const handleCreateNote = async (parentPath?: string) => {
+  const handleCreateNote = async (folderId?: string) => {
     const rawName = prompt(
-      parentPath ? `Create note inside "${parentPath}":` : 'Enter note filename (e.g. ideas/draft.md):'
+      folderId ? 'Create note in the selected folder:' : 'Enter note filename (e.g. draft.md):'
     );
     if (!rawName) return;
 
-    const base = rawName.endsWith('.md') || rawName.endsWith('.txt') ? rawName : `${rawName}.md`;
-    const fullId = parentPath ? `${parentPath}/${base}` : base;
+    const name = rawName.endsWith('.md') || rawName.endsWith('.txt') ? rawName : `${rawName}.md`;
 
     try {
       await saveBeforeTransition();
       const created = await createNote(
-        fullId,
-        `# ${base.replace(/\.(md|txt)$/, '')}\n\n`
+        name,
+        folderId ?? null,
+        `# ${name.replace(/\.(md|txt)$/, '')}\n\n`
       );
       setActiveNote(created);
       await refreshData();

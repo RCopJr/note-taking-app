@@ -7,26 +7,17 @@ import {
   getConfig,
 } from './config.ts';
 import {
-  initDb,
-  getAllNotes,
-  searchNotesFts,
-  getAllTags,
-} from './db.ts';
-import { LocalFileStorageProvider } from './storage.ts';
-import {
   BiblePassageError,
   fetchBiblePassage,
   getBibleStatus,
 } from './bible.ts';
 import {
   biblePassageQuerySchema,
-  createFolderRequestSchema,
   createNoteRequestSchema,
-  localPathSchema,
-  renamePathRequestSchema,
   saveNoteRequestSchema,
   searchQuerySchema,
   updateAppConfigSchema,
+  noteIdSchema,
   type AuthSession,
 } from '../shared/contracts.ts';
 import {
@@ -40,17 +31,11 @@ import {
   type AuthVariables,
   type VerifyAccessToken,
 } from './auth.ts';
+import {
+  SupabaseCloudNoteStore,
+  type CloudNoteStore,
+} from './cloud-notes.ts';
 
-
-let storageProvider: LocalFileStorageProvider | null = null;
-
-export function getStorage(): LocalFileStorageProvider {
-  if (!storageProvider) {
-    const config = getConfig();
-    storageProvider = new LocalFileStorageProvider(config.notesDir);
-  }
-  return storageProvider;
-}
 
 // Parse CLI flags
 function parseArgs(): { port: number; dir?: string } {
@@ -76,13 +61,14 @@ function parseArgs(): { port: number; dir?: string } {
 // ---------------------------------------------------------------------------
 interface CreateAppOptions {
   verifyAccessToken?: VerifyAccessToken;
+  noteStore?: CloudNoteStore;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
+  const noteStore = options.noteStore ?? new SupabaseCloudNoteStore();
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  // The API controls local files. Only the local Vite client may call it
-  // cross-origin during development.
+  // Only the local Vite client may call the development API cross-origin.
   app.use('*', cors({
     origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -117,12 +103,7 @@ app.get('/api/config', (c) => {
 
 app.put('/api/config', async (c) => {
   const updates = await parseJsonBody(c, updateAppConfigSchema);
-  const updated = await saveConfig(updates);
-  if (updates.notesDir) {
-    getStorage().setNotesDir(updated.notesDir);
-    await getStorage().syncAllNotes();
-  }
-  return c.json(updated);
+  return c.json(await saveConfig(updates));
 });
 
 // Bible passages
@@ -150,83 +131,82 @@ app.get('/api/bible/passage', async (c) => {
   }
 });
 
-// File tree
+// Cloud note tree and list
 app.get('/api/tree', async (c) => {
-  const tree = await getStorage().listTree();
-  return c.json(tree);
+  return c.json(await noteStore.listTree({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }));
 });
 
-// Notes list
-app.get('/api/notes', (c) => {
-  const notes = getAllNotes();
-  return c.json(notes);
+app.get('/api/notes', async (c) => {
+  return c.json(await noteStore.listNotes({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }));
 });
 
-// Note by ID
-app.get('/api/notes/:id{.+$}', async (c) => {
-  const id = parseInput(localPathSchema, decodeURIComponent(c.req.param('id')));
-  try {
-    return c.json(await getStorage().getNote(id));
-  } catch {
-    throw new ApiError(404, 'NOT_FOUND', 'The requested note was not found.');
-  }
+// Cloud note by UUID
+app.get('/api/notes/:id', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
+  return c.json(await noteStore.getNote({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id));
 });
 
-// Create note
 app.post('/api/notes', async (c) => {
   const body = await parseJsonBody(c, createNoteRequestSchema);
-  const note = await getStorage().saveNote(body.id, body.content);
+  const note = await noteStore.createNote({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, body);
   return c.json(note, 201);
 });
 
-// Update note content
-app.put('/api/notes/:id{.+$}', async (c) => {
-  const id = parseInput(localPathSchema, decodeURIComponent(c.req.param('id')));
+app.put('/api/notes/:id', async (c) => {
+  const id = parseInput(noteIdSchema, c.req.param('id'));
   const body = await parseJsonBody(c, saveNoteRequestSchema);
-  const note = await getStorage().saveNote(id, body.content);
-  return c.json(note);
+  return c.json(await noteStore.saveNote({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, id, body));
 });
 
-// Delete note or directory
-app.delete('/api/notes/:id{.+$}', async (c) => {
-  const id = parseInput(localPathSchema, decodeURIComponent(c.req.param('id')));
-  await getStorage().deleteNote(id);
-  return c.json({ success: true as const });
+// Remaining cloud mutations arrive in Phase 5. Refuse them rather than
+// accidentally mutating the preserved Markdown source directory.
+app.delete('/api/notes/:id', () => {
+  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Cloud note deletion is not available yet.');
 });
 
-// Create directory
-app.post('/api/folders', async (c) => {
-  const body = await parseJsonBody(c, createFolderRequestSchema);
-  await getStorage().createFolder(body.path);
-  return c.json({ success: true as const }, 201);
+app.post('/api/folders', () => {
+  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Cloud folder creation is not available yet.');
 });
 
-// Rename / Move
-app.post('/api/rename', async (c) => {
-  const body = await parseJsonBody(c, renamePathRequestSchema);
-  await getStorage().renamePath(body.oldPath, body.newPath);
-  return c.json({ success: true as const });
+app.post('/api/rename', () => {
+  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Cloud rename and move are not available yet.');
 });
 
-// Search FTS
-app.get('/api/search', (c) => {
+app.get('/api/search', async (c) => {
   const query = parseInput(searchQuerySchema, {
     q: c.req.query('q'),
     limit: c.req.query('limit'),
   });
-  return c.json(searchNotesFts(query.q, query.limit));
+  return c.json(await noteStore.searchNotes({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, query.q, query.limit));
 });
 
-// Tags
-app.get('/api/tags', (c) => {
-  const tags = getAllTags();
-  return c.json(tags);
+app.get('/api/tags', async (c) => {
+  return c.json(await noteStore.listTags({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }));
 });
 
-// Resync
-app.post('/api/sync', async (c) => {
-  const count = await getStorage().syncAllNotes();
-  return c.json({ synced: count });
+app.post('/api/sync', () => {
+  throw new ApiError(501, 'NOT_IMPLEMENTED', 'Filesystem synchronization is disabled for cloud notes.');
 });
 
 app.notFound((c) => {
@@ -244,14 +224,8 @@ const app = createApp();
 
 async function main() {
   const { port, dir } = parseArgs();
-  const config = await loadConfig(dir);
-  initDb();
+  await loadConfig(dir);
 
-  const storage = getStorage();
-  await storage.syncAllNotes();
-  storage.startWatcher();
-
-  console.log(`[Notes] Storage directory: ${config.notesDir}`);
   console.log(`[Notes] Server running on http://127.0.0.1:${port}`);
 
   serve({

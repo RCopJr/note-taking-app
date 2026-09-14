@@ -29,9 +29,12 @@ function mapNoteRow(r: NoteRow): NoteMetadata {
   return {
     id: r.id,
     path: r.path,
+    name: r.path.split('/').at(-1) ?? r.path,
+    folderId: null,
     title: r.title,
     tags: JSON.parse(r.tags || '[]') as string[],
     size: r.size,
+    revision: 1,
     updatedAt: r.updated_at,
   };
 }
