@@ -25,7 +25,7 @@ export type NoteDocument = z.infer<typeof noteDocumentSchema>;
 
 export interface FileNode {
   name: string;
-  path: string;
+  id: string;
   parentId: string | null;
   type: 'file' | 'directory';
   size?: number;
@@ -36,7 +36,7 @@ export interface FileNode {
 
 export const fileNodeSchema: z.ZodType<FileNode> = z.lazy(() => z.object({
   name: z.string().min(1),
-  path: z.uuid(),
+  id: z.uuid(),
   parentId: z.uuid().nullable(),
   type: z.enum(['file', 'directory']),
   size: z.number().int().nonnegative().optional(),

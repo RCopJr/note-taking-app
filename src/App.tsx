@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
+  ApiClientError,
   fetchNotes,
   fetchNote,
   fetchTree,
@@ -41,12 +42,12 @@ interface AppProps {
 }
 
 function containsNode(node: FileNode, id: string): boolean {
-  return node.path === id || node.children?.some((child) => containsNode(child, id)) === true;
+  return node.id === id || node.children?.some((child) => containsNode(child, id)) === true;
 }
 
 function updateTreeNote(nodes: FileNode[], note: NoteDocument): FileNode[] {
   return nodes.map((node) => {
-    if (node.path === note.id) {
+    if (node.id === note.id) {
       return {
         ...node,
         name: note.name,
@@ -60,6 +61,16 @@ function updateTreeNote(nodes: FileNode[], note: NoteDocument): FileNode[] {
   });
 }
 
+function describeInitialLoadError(error: unknown): string {
+  if (error instanceof ApiClientError && (error.code === 'UNAUTHENTICATED' || error.code === 'FORBIDDEN')) {
+    return 'Your authenticated session could not load notes. Sign in again, then retry.';
+  }
+  if (error instanceof TypeError) {
+    return 'The notes service could not be reached. Check your connection, then retry.';
+  }
+  return error instanceof Error ? error.message : 'The notes workspace could not be loaded.';
+}
+
 export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
   const [config, setConfig] = useState<AppConfig>(() => loadPreferences());
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
@@ -68,8 +79,10 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
   const [, setTags] = useState<TagCount[]>([]);
   const [bibleStatus, setBibleStatus] = useState<BibleStatus | null>(null);
   const [activeNote, setActiveNote] = useState<NoteDocument | null>(null);
+  const [editorGeneration, setEditorGeneration] = useState(0);
   const editorRef = useRef<EditorHandle>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [initialLoadStatus, setInitialLoadStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
 
   // Modals
   const [isExplorerOpen, setIsExplorerOpen] = useState<boolean>(false);
@@ -84,36 +97,39 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
 
   // Load all app data from backend
   const refreshData = useCallback(async () => {
-    try {
-      const [allNotes, fileTree, tagList, deletedItems, currentBibleStatus] = await Promise.all([
-        fetchNotes(),
-        fetchTree(),
-        fetchTags(),
-        fetchTrash(),
-        fetchBibleStatus(),
-      ]);
-      setNotes(allNotes);
-      setTree(fileTree);
-      setTags(tagList);
-      setTrash(deletedItems);
-      setBibleStatus(currentBibleStatus);
-      return { allNotes };
-    } catch (err) {
-      console.error('Failed to load notes data:', err);
-      return null;
-    }
+    const [allNotes, fileTree, tagList, deletedItems, currentBibleStatus] = await Promise.all([
+      fetchNotes(),
+      fetchTree(),
+      fetchTags(),
+      fetchTrash(),
+      fetchBibleStatus(),
+    ]);
+    setNotes(allNotes);
+    setTree(fileTree);
+    setTags(tagList);
+    setTrash(deletedItems);
+    setBibleStatus(currentBibleStatus);
+    return { allNotes };
   }, []);
+
+  const loadInitialData = useCallback(async () => {
+    setInitialLoadStatus('loading');
+    setInitialLoadError(null);
+    try {
+      const result = await refreshData();
+      const firstNote = result.allNotes[0];
+      setActiveNote(firstNote ? await fetchNote(firstNote.id) : null);
+      setInitialLoadStatus('ready');
+    } catch (error) {
+      setInitialLoadError(describeInitialLoadError(error));
+      setInitialLoadStatus('error');
+    }
+  }, [refreshData]);
 
   // Initial mount
   useEffect(() => {
-    refreshData().then(async (result) => {
-      if (result && result.allNotes.length > 0 && result.allNotes[0]) {
-        const firstNote = await fetchNote(result.allNotes[0].id);
-        setActiveNote(firstNote);
-      }
-      setIsLoading(false);
-    });
-  }, [refreshData]);
+    void loadInitialData();
+  }, [loadInitialData]);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -297,6 +313,18 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     setTree((previous) => updateTreeNote(previous, updated));
   }, [activeNote]);
 
+  const handleReloadCloudVersion = useCallback(async () => {
+    if (!activeNote) return;
+    if (!window.confirm('Reload the cloud version and discard your unsaved local edits?')) return;
+
+    const current = await fetchNote(activeNote.id);
+    setActiveNote(current);
+    const { content: _, ...metadata } = current;
+    setNotes((previous) => previous.map((note) => note.id === current.id ? metadata : note));
+    setTree((previous) => updateTreeNote(previous, current));
+    setEditorGeneration((generation) => generation + 1);
+  }, [activeNote]);
+
   const handleCreateNote = async (folderId?: string) => {
     const rawName = prompt(
       folderId ? 'Create note in the selected folder:' : 'Enter note filename (e.g. draft.md):'
@@ -334,13 +362,13 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     }
   };
 
-  const handleDeletePath = async (node: FileNode) => {
+  const handleDeleteNode = async (node: FileNode) => {
     try {
       if (node.type === 'directory') {
-        await deleteFolder(node.path);
+        await deleteFolder(node.id);
       } else {
         if (!node.revision) throw new Error('The note revision is unavailable.');
-        await deleteNote(node.path, node.revision);
+        await deleteNote(node.id, node.revision);
       }
       if (activeNote && containsNode(node, activeNote.id)) {
         setActiveNote(null);
@@ -351,15 +379,15 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     }
   };
 
-  const handleRenamePath = async (node: FileNode, newName: string) => {
+  const handleRenameNode = async (node: FileNode, newName: string) => {
     try {
       await saveBeforeTransition();
       if (node.type === 'directory') {
-        await updateFolder(node.path, newName, node.parentId);
+        await updateFolder(node.id, newName, node.parentId);
       } else {
-        const current = await fetchNote(node.path);
-        const renamed = await updateNoteMetadata(node.path, newName, node.parentId, current.revision);
-        if (activeNote?.id === node.path) setActiveNote(renamed);
+        const current = await fetchNote(node.id);
+        const renamed = await updateNoteMetadata(node.id, newName, node.parentId, current.revision);
+        if (activeNote?.id === node.id) setActiveNote(renamed);
       }
       await refreshData();
     } catch (err) {
@@ -367,15 +395,15 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     }
   };
 
-  const handleMovePath = async (node: FileNode, parentId: string | null) => {
+  const handleMoveNode = async (node: FileNode, parentId: string | null) => {
     try {
       await saveBeforeTransition();
       if (node.type === 'directory') {
-        await updateFolder(node.path, node.name, parentId);
+        await updateFolder(node.id, node.name, parentId);
       } else {
-        const current = await fetchNote(node.path);
-        const moved = await updateNoteMetadata(node.path, node.name, parentId, current.revision);
-        if (activeNote?.id === node.path) setActiveNote(moved);
+        const current = await fetchNote(node.id);
+        const moved = await updateNoteMetadata(node.id, node.name, parentId, current.revision);
+        if (activeNote?.id === node.id) setActiveNote(moved);
       }
       await refreshData();
     } catch (err) {
@@ -402,12 +430,31 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     setConfig((current) => savePreferences(current, updates));
   };
 
-  if (isLoading) {
+  if (initialLoadStatus !== 'ready') {
     return (
-        <div className="flex h-screen w-screen items-center justify-center bg-white text-[#24292e]">
-          <div className="flex flex-col items-center space-y-3 font-mono text-sm">
-            <div className="w-7 h-7 border-2 border-[#24292e] border-t-transparent rounded-full animate-spin" />
-          <span>Loading Notes...</span>
+      <div className="flex h-screen w-screen items-center justify-center bg-white p-6 text-[#24292e]">
+        <div className="flex w-full max-w-md flex-col items-center space-y-4 text-center">
+          {initialLoadStatus === 'loading' ? (
+            <>
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#24292e] border-t-transparent" />
+              <p className="font-mono text-sm">Loading your notes…</p>
+            </>
+          ) : (
+            <>
+              <FileText size={28} className="opacity-40" />
+              <div>
+                <h1 className="font-semibold">Notes could not be loaded</h1>
+                <p role="alert" className="mt-2 text-sm text-[#57606a]">{initialLoadError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadInitialData()}
+                className="rounded bg-[#24292e] px-4 py-2 text-sm font-medium text-white"
+              >
+                Retry
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -421,10 +468,12 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
         {activeNote ? (
           <Editor
             ref={editorRef}
-            key={activeNote.id}
+            key={`${activeNote.id}:${editorGeneration}`}
             noteId={activeNote.id}
+            noteName={activeNote.name}
             initialContent={activeNote.content}
             onSave={handleSave}
+            onResolveConflict={handleReloadCloudVersion}
             onDirtyChange={onDirtyChange}
             leaderKey={config?.leaderKey || '<Space>'}
             customKeymaps={config?.vimKeymaps || []}
@@ -452,9 +501,9 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
         onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
         onCreateFolder={handleCreateFolder}
-        onDeletePath={handleDeletePath}
-        onRenamePath={handleRenamePath}
-        onMovePath={handleMovePath}
+        onDeleteNode={handleDeleteNode}
+        onRenameNode={handleRenameNode}
+        onMoveNode={handleMoveNode}
         onOpenTrash={() => {
           setIsExplorerOpen(false);
           setIsTrashOpen(true);

@@ -27,6 +27,7 @@ export function AuthGate({ children }: AuthGateProps) {
   const [hasEnteredApp, setHasEnteredApp] = useState(false);
   const [dirty, setDirty] = useState(false);
   const evaluationId = useRef(0);
+  const authOverlayRef = useRef<HTMLDivElement>(null);
 
   const evaluateSession = useCallback(async () => {
     const id = ++evaluationId.current;
@@ -119,6 +120,7 @@ export function AuthGate({ children }: AuthGateProps) {
   useEffect(() => {
     if (!blocked || !hasEnteredApp) return;
     const blockKeyboard = (event: KeyboardEvent) => {
+      if (event.target instanceof Node && authOverlayRef.current?.contains(event.target)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
@@ -253,7 +255,11 @@ export function AuthGate({ children }: AuthGateProps) {
       )}
 
       {blocked && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95 p-6">
+        <div
+          ref={authOverlayRef}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-white/95 p-6"
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           <div className="w-full max-w-sm rounded-lg border border-[#d0d7de] bg-white p-6 shadow-lg">
             <h1 className="mb-1 text-xl font-semibold text-[#24292e]">Notes</h1>
             <p className="mb-5 text-sm text-[#57606a]">

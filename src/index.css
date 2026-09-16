@@ -382,3 +382,17 @@ body {
   background-color: #111111;
   color: #ffffff;
 }
+
+@media (max-width: 639px) {
+  .cm-editor .cm-scroller {
+    padding: 1.25rem 0 6rem;
+  }
+
+  .cm-editor .cm-content {
+    padding: 0 1rem;
+  }
+
+  .cm-editor .cm-vim-panel {
+    padding: 0.5rem;
+  }
+}

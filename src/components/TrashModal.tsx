@@ -33,8 +33,8 @@ export const TrashModal: React.FC<TrashModalProps> = ({ isOpen, items, onRestore
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 font-sans text-sm text-editor-text" onClick={onClose}>
-      <div className="flex max-h-[75dvh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-editor-border bg-editor-bg shadow-lg" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-0 font-sans text-sm text-editor-text sm:p-4" onClick={onClose}>
+      <div className="flex h-full max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden border border-editor-border bg-editor-bg shadow-lg sm:h-auto sm:max-h-[75dvh] sm:rounded-lg" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-editor-border bg-editor-sidebar px-4 py-3">
           <div className="flex items-center gap-2 font-semibold">
             <Trash2 size={16} />
@@ -48,7 +48,7 @@ export const TrashModal: React.FC<TrashModalProps> = ({ isOpen, items, onRestore
           {items.length === 0 ? (
             <div className="p-8 text-center text-editor-muted">Trash is empty.</div>
           ) : items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-4 px-4 py-3">
+            <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-3 sm:gap-4 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
                 {item.type === 'directory' ? <Folder size={15} className="shrink-0 text-editor-muted" /> : <FileText size={15} className="shrink-0 text-editor-muted" />}
                 <div className="min-w-0">
@@ -60,7 +60,7 @@ export const TrashModal: React.FC<TrashModalProps> = ({ isOpen, items, onRestore
                 type="button"
                 disabled={restoringId !== null}
                 onClick={() => restore(item)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded border border-editor-border px-3 py-1.5 font-medium hover:bg-editor-active disabled:cursor-wait disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded border border-editor-border px-2 py-1.5 font-medium hover:bg-editor-active disabled:cursor-wait disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted sm:px-3"
               >
                 <RotateCcw size={14} />
                 {restoringId === item.id ? 'Restoring…' : 'Restore'}

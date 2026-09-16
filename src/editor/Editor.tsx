@@ -18,8 +18,10 @@ import { DocumentSaveState } from './documentSaveState.ts';
 
 export interface EditorProps {
   noteId: string;
+  noteName: string;
   initialContent: string;
   onSave: (content: string) => Promise<void>;
+  onResolveConflict?: () => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
   leaderKey?: string;
   customKeymaps?: VimKeymap[];
@@ -49,8 +51,10 @@ function cursorScrollMargin(view: EditorView, requestedLines: number) {
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(({
   noteId,
+  noteName,
   initialContent,
   onSave,
+  onResolveConflict,
   onDirtyChange,
   leaderKey = '<Space>',
   customKeymaps = [],
@@ -99,8 +103,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
         } catch (error) {
           setSaveStatus(
             typeof error === 'object' && error !== null && 'code' in error && error.code === 'REVISION_CONFLICT'
-              ? 'Conflict — newer cloud version'
-              : 'Save failed',
+              ? 'Conflict — cloud version changed'
+              : 'Save failed — edits remain unsaved',
           );
           throw error;
         }
@@ -282,14 +286,38 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(({
       />
 
       {/* Discreet Floating Document & Save Status Pill */}
-      <div className="fixed bottom-4 right-5 z-30 flex items-center space-x-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-xs border border-[#e1e4e8] shadow-sm text-xs font-mono select-none pointer-events-auto opacity-60 hover:opacity-100 transition-opacity">
-        <span className="font-semibold text-[#24292e] truncate max-w-[200px]">
-          {noteId}
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed bottom-3 left-3 right-3 z-30 flex min-w-0 items-center justify-end gap-2 rounded-full border border-[#e1e4e8] bg-white/95 px-3 py-1 font-mono text-xs shadow-sm backdrop-blur-xs transition-opacity sm:bottom-4 sm:left-auto sm:right-5 sm:max-w-[min(90vw,34rem)] sm:opacity-70 sm:hover:opacity-100"
+      >
+        <span className="min-w-0 truncate font-semibold text-[#24292e]">
+          {noteName}
         </span>
-        <span className="text-[#d1d5da]">|</span>
-        <span className="text-editor-muted font-medium">
+        <span className="shrink-0 text-[#d1d5da]">|</span>
+        <span className="min-w-0 truncate font-medium text-editor-muted">
           {saveStatus}
         </span>
+        {saveStatus.startsWith('Save failed') && (
+          <button
+            type="button"
+            onClick={() => void saveIfDirty().catch(() => {})}
+            className="shrink-0 font-semibold text-[#24292e] underline underline-offset-2"
+          >
+            Retry
+          </button>
+        )}
+        {saveStatus.startsWith('Conflict') && onResolveConflict && (
+          <button
+            type="button"
+            onClick={() => void onResolveConflict().catch(() => {
+              setSaveStatus('Reload failed — local edits preserved');
+            })}
+            className="shrink-0 font-semibold text-[#24292e] underline underline-offset-2"
+          >
+            Reload cloud copy
+          </button>
+        )}
       </div>
     </div>
   );

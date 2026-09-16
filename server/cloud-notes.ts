@@ -198,7 +198,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
     for (const folder of foldersResult.data) {
       add(folder.parent_id, {
         name: folder.name,
-        path: folder.id,
+        id: folder.id,
         parentId: folder.parent_id,
         type: 'directory',
         updatedAt: Date.parse(folder.updated_at),
@@ -208,7 +208,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
     for (const note of notesResult.data) {
       add(note.folder_id, {
         name: note.name,
-        path: note.id,
+        id: note.id,
         parentId: note.folder_id,
         type: 'file',
         size: note.size ?? 0,
@@ -219,9 +219,9 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
 
     const attach = (parentId: string | null, visiting: Set<string>): FileNode[] => (children.get(parentId) ?? [])
       .map((node) => {
-        if (node.type !== 'directory' || visiting.has(node.path)) return node;
-        const nextVisiting = new Set(visiting).add(node.path);
-        return { ...node, children: attach(node.path, nextVisiting) };
+        if (node.type !== 'directory' || visiting.has(node.id)) return node;
+        const nextVisiting = new Set(visiting).add(node.id);
+        return { ...node, children: attach(node.id, nextVisiting) };
       })
       .sort((left, right) => left.type === right.type
         ? left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })

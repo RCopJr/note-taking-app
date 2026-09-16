@@ -109,11 +109,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 font-sans text-sm text-editor-text"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-0 font-sans text-sm text-editor-text sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col max-h-[85dvh]"
+        className="flex h-full max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden border border-editor-border bg-editor-bg shadow-lg sm:h-auto sm:max-h-[85dvh] sm:rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -144,7 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }`}
           >
             <Folder size={13} />
-            <span>General & Storage</span>
+            <span>General</span>
           </button>
           <button
             type="button"
@@ -334,7 +334,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {activeTab === 'keymaps' && (
             <div className="space-y-4">
               <p className="text-sm text-editor-muted">
-                Custom Vim key remappings stored in <code className="bg-editor-active px-1 py-0.5 rounded font-mono text-editor-text break-all">~/.config/notes/config.json</code>.
+                Custom Vim key remappings are stored with preferences on this device.
               </p>
 
               {/* Existing Keymaps Table */}
