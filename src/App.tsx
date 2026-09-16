@@ -34,6 +34,7 @@ import { TrashModal } from './components/TrashModal.tsx';
 import { ExportModal } from './components/ExportModal.tsx';
 import { CheatsheetModal } from './components/CheatsheetModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
+import { DataPortabilityModal } from './components/DataPortabilityModal.tsx';
 import { loadPreferences, savePreferences } from './preferences.ts';
 import { FileText } from 'lucide-react';
 
@@ -92,6 +93,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isTrashOpen, setIsTrashOpen] = useState<boolean>(false);
+  const [isDataPortabilityOpen, setIsDataPortabilityOpen] = useState<boolean>(false);
   const leaderHint = config?.leaderKey || '<Space>';
 
 
@@ -277,6 +279,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     setIsCheatsheetOpen(false);
     setIsSettingsOpen(false);
     setIsTrashOpen(false);
+    setIsDataPortabilityOpen(false);
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('notes:focus-editor'));
     }, 20);
@@ -430,6 +433,21 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
     setConfig((current) => savePreferences(current, updates));
   };
 
+  const handleOpenDataPortability = async () => {
+    try {
+      await saveBeforeTransition();
+      setIsSettingsOpen(false);
+      setIsDataPortabilityOpen(true);
+    } catch (error) {
+      alert(`Save the active note before importing or exporting: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleImportComplete = async () => {
+    const { allNotes } = await refreshData();
+    if (!activeNote && allNotes[0]) setActiveNote(await fetchNote(allNotes[0].id));
+  };
+
   if (initialLoadStatus !== 'ready') {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-white p-6 text-[#24292e]">
@@ -550,6 +568,13 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
         config={config}
         bibleStatus={bibleStatus}
         onSave={handleSaveConfig}
+        onOpenDataPortability={() => void handleOpenDataPortability()}
+        onClose={handleCloseModals}
+      />
+
+      <DataPortabilityModal
+        isOpen={isDataPortabilityOpen}
+        onImported={handleImportComplete}
         onClose={handleCloseModals}
       />
     </div>

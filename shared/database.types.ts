@@ -72,6 +72,44 @@ export type Database = {
           },
         ]
       }
+      markdown_imports: {
+        Row: {
+          id: string
+          imported_at: string
+          imported_path: string
+          note_id: string
+          owner_id: string
+          source_hash: string
+          source_path: string
+        }
+        Insert: {
+          id?: string
+          imported_at?: string
+          imported_path: string
+          note_id: string
+          owner_id: string
+          source_hash: string
+          source_path: string
+        }
+        Update: {
+          id?: string
+          imported_at?: string
+          imported_path?: string
+          note_id?: string
+          owner_id?: string
+          source_hash?: string
+          source_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "markdown_imports_note_owner_fkey"
+            columns: ["owner_id", "note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["owner_id", "id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string
@@ -136,6 +174,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      import_markdown_note: {
+        Args: {
+          p_content: string
+          p_folder_names: string[]
+          p_name: string
+          p_search_text: string
+          p_source_hash: string
+          p_source_path: string
+          p_tags: string[]
+          p_target_path: string
+          p_title: string
+        }
+        Returns: {
+          imported_path: string
+          note_id: string
+          outcome: string
+        }[]
+      }
       save_note: {
         Args: {
           p_content: string

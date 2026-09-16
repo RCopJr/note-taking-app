@@ -8,6 +8,7 @@ import {
   fileTreeSchema,
   folderMetadataSchema,
   ftsSearchResultsSchema,
+  markdownImportReportSchema,
   noteDocumentSchema,
   noteMetadataSchema,
   successResponseSchema,
@@ -20,6 +21,8 @@ import {
   type FileNode,
   type FolderMetadata,
   type FtsSearchResult,
+  type MarkdownImportFile,
+  type MarkdownImportReport,
   type NoteDocument,
   type NoteMetadata,
   type TagCount,
@@ -224,4 +227,30 @@ export async function searchNotes(query: string, limit: number = 30): Promise<Ft
 export async function fetchTags(): Promise<TagCount[]> {
   const res = await apiFetch(`${BASE_URL}/tags`);
   return handleResponse(res, tagCountsSchema);
+}
+
+export async function importMarkdown(
+  files: MarkdownImportFile[],
+  mode: 'dry-run' | 'commit',
+): Promise<MarkdownImportReport> {
+  const res = await apiFetch(`${BASE_URL}/import/markdown`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode, files }),
+  });
+  return handleResponse(res, markdownImportReportSchema);
+}
+
+export async function fetchMarkdownArchive(): Promise<{ blob: Blob; filename: string }> {
+  const res = await apiFetch(`${BASE_URL}/export/markdown`);
+  if (!res.ok) {
+    await handleResponse(res, successResponseSchema);
+    throw new ApiClientError(res.status, 'INVALID_RESPONSE', 'The Markdown export failed.');
+  }
+  if (res.headers.get('Content-Type') !== 'application/zip') {
+    throw new ApiClientError(res.status, 'INVALID_RESPONSE', 'The server returned an invalid Markdown archive.');
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'notes-backup.zip';
+  return { blob: await res.blob(), filename };
 }

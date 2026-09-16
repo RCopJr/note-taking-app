@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(56);
+select plan(65);
 
 select ok(
   to_regclass('public.folders') is not null,
@@ -11,6 +11,11 @@ select ok(
 select ok(
   to_regclass('public.notes') is not null,
   'notes table exists'
+);
+
+select ok(
+  to_regclass('public.markdown_imports') is not null,
+  'Markdown import manifest table exists'
 );
 
 select results_eq(
@@ -23,6 +28,12 @@ select results_eq(
   $$select relrowsecurity from pg_class where oid = 'public.notes'::regclass$$,
   array[true],
   'notes has row-level security enabled'
+);
+
+select results_eq(
+  $$select relrowsecurity from pg_class where oid = 'public.markdown_imports'::regclass$$,
+  array[true],
+  'Markdown import manifests have row-level security enabled'
 );
 
 select ok(
@@ -76,6 +87,13 @@ select has_function(
   'set_folder_deleted',
   array['uuid', 'boolean'],
   'transactional folder deletion function exists'
+);
+
+select has_function(
+  'public',
+  'import_markdown_note',
+  array['text', 'text', 'text', 'text[]', 'text', 'text', 'text', 'text[]', 'text'],
+  'transactional Markdown import function exists'
 );
 
 select throws_ok(
@@ -162,6 +180,63 @@ select throws_ok(
 set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
 
+
+select results_eq(
+  $$select outcome from public.import_markdown_note(
+    'Imported/Nested/fixture.md',
+    repeat('a', 64),
+    'Imported/Nested/fixture.md',
+    array['Imported', 'Nested'],
+    'fixture.md',
+    E'---\ntags: [fixture]\n---\n# Imported',
+    'Imported',
+    array['fixture'],
+    'fixture.md Imported fixture'
+  )$$,
+  array['imported'::text],
+  'a Markdown note imports transactionally'
+);
+
+select results_eq(
+  $$select count(*) from public.folders where name in ('Imported', 'Nested')$$,
+  array[2::bigint],
+  'Markdown import creates the relative folder hierarchy'
+);
+
+select results_eq(
+  $$select title, tags, content from public.notes where name = 'fixture.md'$$,
+  $$values ('Imported'::text, array['fixture']::text[], E'---\ntags: [fixture]\n---\n# Imported'::text)$$,
+  'Markdown import stores content and production-derived metadata'
+);
+
+select results_eq(
+  $$select count(*) from public.markdown_imports
+    where source_path = 'Imported/Nested/fixture.md' and source_hash = repeat('a', 64)$$,
+  array[1::bigint],
+  'Markdown import records its idempotency manifest'
+);
+
+select results_eq(
+  $$select outcome from public.import_markdown_note(
+    'Imported/Nested/fixture.md',
+    repeat('a', 64),
+    'Imported/Nested/fixture.md',
+    array['Imported', 'Nested'],
+    'fixture.md',
+    E'---\ntags: [fixture]\n---\n# Imported',
+    'Imported',
+    array['fixture'],
+    'fixture.md Imported fixture'
+  )$$,
+  array['skipped'::text],
+  'retrying the same source path and hash is skipped'
+);
+
+select results_eq(
+  $$select count(*) from public.notes where name = 'fixture.md'$$,
+  array[1::bigint],
+  'an idempotent retry does not duplicate the note'
+);
 select results_eq(
   $$select count(*) from public.notes where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1'$$,
   array[1::bigint],

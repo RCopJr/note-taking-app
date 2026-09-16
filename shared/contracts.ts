@@ -194,6 +194,39 @@ export const revisionMutationRequestSchema = z.object({
 
 export type RevisionMutationRequest = z.infer<typeof revisionMutationRequestSchema>;
 
+export const markdownImportFileSchema = z.object({
+  path: z.string().min(1).max(4_096),
+  content: z.string().max(5_000_000),
+}).strict();
+
+export type MarkdownImportFile = z.infer<typeof markdownImportFileSchema>;
+
+export const markdownImportRequestSchema = z.object({
+  mode: z.enum(['dry-run', 'commit']),
+  files: z.array(markdownImportFileSchema).min(1).max(2_000),
+}).strict();
+
+export type MarkdownImportRequest = z.infer<typeof markdownImportRequestSchema>;
+
+export const markdownImportEntrySchema = z.object({
+  sourcePath: z.string(),
+  targetPath: z.string().nullable(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  message: z.string().optional(),
+}).strict();
+
+export type MarkdownImportEntry = z.infer<typeof markdownImportEntrySchema>;
+
+export const markdownImportReportSchema = z.object({
+  dryRun: z.boolean(),
+  imported: z.array(markdownImportEntrySchema),
+  skipped: z.array(markdownImportEntrySchema),
+  renamed: z.array(markdownImportEntrySchema),
+  failed: z.array(markdownImportEntrySchema),
+}).strict();
+
+export type MarkdownImportReport = z.infer<typeof markdownImportReportSchema>;
+
 export const noteIdSchema = z.uuid();
 
 export const searchQuerySchema = z.object({
