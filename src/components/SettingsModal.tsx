@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders, BookOpen } from 'lucide-react';
+import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders, BookOpen, Archive } from 'lucide-react';
 import type {
   AppConfig,
   BibleStatus,
@@ -12,6 +12,7 @@ export interface SettingsModalProps {
   config: AppConfig | null;
   bibleStatus: BibleStatus | null;
   onSave: (updates: UpdateAppConfig) => Promise<void>;
+  onOpenDataPortability: () => void;
   onClose: () => void;
 }
 
@@ -20,6 +21,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   config,
   bibleStatus,
   onSave,
+  onOpenDataPortability,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'bible' | 'keymaps'>('general');
@@ -206,6 +208,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <p className="text-sm text-editor-muted">
                   Prefix for Telescope commands (e.g. &lt;Space&gt;ff, &lt;Space&gt;fw, &lt;Space&gt;g).
                 </p>
+              </div>
+
+              <div className="space-y-2 border-t border-editor-border pt-4">
+                <span className="block font-semibold text-editor-text">Data portability</span>
+                <p className="text-sm text-editor-muted">
+                  Import a local Markdown directory or download a complete cloud backup ZIP.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenDataPortability}
+                  className="flex items-center gap-2 rounded border border-editor-border bg-editor-bg px-3 py-2 font-medium text-editor-text hover:bg-editor-active"
+                >
+                  <Archive size={14} />
+                  <span>Open import and export</span>
+                </button>
               </div>
             </div>
           )}

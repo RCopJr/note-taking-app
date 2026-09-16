@@ -10,6 +10,7 @@ import {
   biblePassageQuerySchema,
   createFolderRequestSchema,
   createNoteRequestSchema,
+  markdownImportRequestSchema,
   revisionMutationRequestSchema,
   saveNoteRequestSchema,
   searchQuerySchema,
@@ -33,6 +34,10 @@ import {
   SupabaseCloudNoteStore,
   type CloudNoteStore,
 } from './cloud-notes.ts';
+import {
+  SupabaseDataTransferStore,
+  type DataTransferStore,
+} from './data-transfer.ts';
 
 
 // Parse CLI flags
@@ -56,10 +61,12 @@ function parseArgs(): { port: number } {
 interface CreateAppOptions {
   verifyAccessToken?: VerifyAccessToken;
   noteStore?: CloudNoteStore;
+  dataTransferStore?: DataTransferStore;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
   const noteStore = options.noteStore ?? new SupabaseCloudNoteStore();
+  const dataTransferStore = options.dataTransferStore ?? new SupabaseDataTransferStore();
   const app = new Hono<{ Variables: AuthVariables }>();
 
   // Only the local Vite client may call the development API cross-origin.
@@ -244,6 +251,26 @@ app.get('/api/tags', async (c) => {
     accessToken: c.get('accessToken'),
     userId: c.get('userId'),
   }));
+});
+
+app.post('/api/import/markdown', async (c) => {
+  const body = await parseJsonBody(c, markdownImportRequestSchema);
+  return c.json(await dataTransferStore.importMarkdown({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  }, body));
+});
+
+app.get('/api/export/markdown', async (c) => {
+  const archive = await dataTransferStore.exportMarkdown({
+    accessToken: c.get('accessToken'),
+    userId: c.get('userId'),
+  });
+  return c.body(Uint8Array.from(archive.bytes), 200, {
+    'Content-Type': 'application/zip',
+    'Content-Disposition': `attachment; filename="${archive.filename}"`,
+    'Cache-Control': 'no-store',
+  });
 });
 
 app.post('/api/sync', () => {

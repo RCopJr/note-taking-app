@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createApp } from '../server/index.ts';
 import type { CloudNoteStore } from '../server/cloud-notes.ts';
+import type { DataTransferStore } from '../server/data-transfer.ts';
 import { ApiError } from '../server/http.ts';
 import type { NoteDocument } from '../shared/contracts.ts';
 
@@ -118,8 +119,31 @@ const noteStore: CloudNoteStore = {
   },
 };
 
+const dataTransferStore: DataTransferStore = {
+  async importMarkdown(context, input) {
+    assert.equal(context.userId, ALICE_ID);
+    const entry = {
+      sourcePath: input.files[0].path,
+      targetPath: input.files[0].path,
+      sha256: 'a'.repeat(64),
+    };
+    return {
+      dryRun: input.mode === 'dry-run',
+      imported: [entry],
+      skipped: [],
+      renamed: [],
+      failed: [],
+    };
+  },
+  async exportMarkdown(context) {
+    assert.equal(context.userId, ALICE_ID);
+    return { bytes: Uint8Array.from([80, 75, 3, 4]), filename: 'notes-backup.zip' };
+  },
+};
+
 const app = createApp({
   noteStore,
+  dataTransferStore,
   verifyAccessToken: async (accessToken) => {
     if (accessToken === 'alice-aal1') {
       return { userId: ALICE_ID, assuranceLevel: 'aal1' };
@@ -215,4 +239,27 @@ test('cloud tree mutations use stable UUIDs and explicit revisions', async () =>
   const trash = await request('/api/trash');
   assert.equal(trash.status, 200);
   assert.equal((await trash.json())[0].id, NOTE_ID);
+});
+
+test('Markdown transfer routes validate previews and return ZIP downloads', async () => {
+  const invalid = await request('/api/import/markdown', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'dry-run', files: [{ path: '../bad.md' }] }),
+  });
+  assert.equal(invalid.status, 400);
+
+  const preview = await request('/api/import/markdown', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'dry-run', files: [{ path: 'fixture.md', content: '# Fixture' }] }),
+  });
+  assert.equal(preview.status, 200);
+  assert.equal((await preview.json()).dryRun, true);
+
+  const archive = await request('/api/export/markdown');
+  assert.equal(archive.status, 200);
+  assert.equal(archive.headers.get('Content-Type'), 'application/zip');
+  assert.equal(archive.headers.get('Content-Disposition'), 'attachment; filename="notes-backup.zip"');
+  assert.deepEqual(new Uint8Array(await archive.arrayBuffer()), Uint8Array.from([80, 75, 3, 4]));
 });
