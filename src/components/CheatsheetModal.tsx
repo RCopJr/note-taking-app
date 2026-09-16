@@ -31,9 +31,9 @@ export const CheatsheetModal: React.FC<CheatsheetModalProps> = ({
   const items: CheatItem[] = useMemo(() => [
     // Vim & Shortcuts
     { category: 'Vim Motions & Commands', command: `${leaderKey}ff / Cmd+P`, description: 'Find notes by file path or title (Telescope)' },
-    { category: 'Vim Motions & Commands', command: `${leaderKey}fw / Cmd+Shift+F`, description: 'Live grep search across note contents (SQLite FTS5)' },
+    { category: 'Vim Motions & Commands', command: `${leaderKey}fw / Cmd+Shift+F`, description: 'Search across cloud note contents' },
     { category: 'Vim Motions & Commands', command: `${leaderKey}g / :gdoc`, description: 'Copy rich-text HTML for Google Docs' },
-    { category: 'Vim Motions & Commands', command: `${leaderKey}e`, description: 'Toggle left sidebar folder tree' },
+    { category: 'Vim Motions & Commands', command: `${leaderKey}e`, description: 'Open the folder explorer' },
     { category: 'Vim Motions & Commands', command: `${leaderKey}tr / :raw`, description: 'Toggle Obsidian-style Live Preview vs Raw text' },
     { category: 'Vim Motions & Commands', command: `${leaderKey}?`, description: 'Open this Markdown & Vim cheatsheet' },
     { category: 'Vim Motions & Commands', command: 'jk or jj or Esc', description: 'Exit Insert mode back to Normal mode' },

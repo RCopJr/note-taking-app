@@ -39,6 +39,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [grepResults, setGrepResults] = useState<FtsSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -51,6 +52,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
       setQuery('');
       setSelectedIndex(0);
       setGrepResults([]);
+      setSearchError(null);
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
@@ -90,11 +92,13 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
     const trimmed = query.trim();
     if (!trimmed) {
       setGrepResults([]);
+      setSearchError(null);
       setIsSearching(false);
       return;
     }
 
     setIsSearching(true);
+    setSearchError(null);
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -105,8 +109,13 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
           setGrepResults(res);
           setSelectedIndex(0);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           setGrepResults([]);
+          setSearchError(
+            error instanceof TypeError
+              ? 'Search could not reach the notes service. Check your connection and try again.'
+              : error instanceof Error ? error.message : 'Search failed.',
+          );
         })
         .finally(() => {
           setIsSearching(false);
@@ -179,11 +188,11 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 p-4 sm:pt-20"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 p-0 sm:p-4 sm:pt-20"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col font-sans text-sm text-editor-text"
+        className="flex h-full max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden border border-editor-border bg-editor-bg font-sans text-sm text-editor-text shadow-lg sm:h-auto sm:max-h-[calc(100dvh-6rem)] sm:rounded-lg"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -210,7 +219,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                   : 'text-editor-muted hover:bg-editor-active hover:text-editor-text'
               }`}
             >
-              Live Grep FTS5 (<span className="font-mono text-xs">Tab</span>)
+              Search Contents (<span className="font-mono text-xs">Tab</span>)
             </button>
           </div>
 
@@ -246,7 +255,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
         {/* Results List */}
         <div
           ref={listRef}
-          className="min-h-0 max-h-80 overflow-y-auto divide-y divide-editor-border"
+          className="min-h-0 flex-1 overflow-y-auto divide-y divide-editor-border sm:max-h-80"
         >
           {mode === 'files' ? (
             fileResults.length > 0 ? (
@@ -282,7 +291,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                     </div>
 
                     {note.tags.length > 0 && (
-                      <div className="flex max-w-[40%] items-center space-x-1 overflow-hidden shrink-0 ml-3">
+                      <div className="ml-3 hidden max-w-[40%] shrink-0 items-center space-x-1 overflow-hidden sm:flex">
                         <Tag size={12} className="text-editor-muted shrink-0" />
                         {note.tags.slice(0, 3).map((tag) => (
                           <span
@@ -351,18 +360,18 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
               );
             })
           ) : query.trim() ? (
-            <div className="p-8 text-center text-sm text-editor-muted">
-              {isSearching ? 'Searching notes...' : 'No grep matches found.'}
+            <div className={`p-8 text-center text-sm ${searchError ? 'text-[#cf222e]' : 'text-editor-muted'}`} role={searchError ? 'alert' : undefined}>
+              {isSearching ? 'Searching notes…' : searchError ?? 'No matches found.'}
             </div>
           ) : (
             <div className="p-8 text-center text-sm text-editor-muted">
-              Type to live-grep across all note contents using SQLite FTS5.
+              Type to search across all cloud note contents.
             </div>
           )}
         </div>
 
         {/* Footer Navigation Hints */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-editor-sidebar border-t border-editor-border text-xs text-editor-muted select-none shrink-0">
+        <div className="hidden flex-wrap items-center justify-between gap-3 px-3 py-2 bg-editor-sidebar border-t border-editor-border text-xs text-editor-muted select-none shrink-0 sm:flex">
           <div className="flex flex-wrap items-center gap-3">
             <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">↑/↓</kbd> or <kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Ctrl+j/k</kbd> navigate</span>
             <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1 py-0.5 rounded text-editor-text">Enter</kbd> open</span>

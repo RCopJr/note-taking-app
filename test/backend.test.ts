@@ -30,7 +30,7 @@ const noteStore: CloudNoteStore = {
   },
   async listTree(context) {
     return context.userId === ALICE_ID
-      ? [{ name: note.name, path: note.id, parentId: note.folderId, type: 'file', size: note.size, revision: note.revision, updatedAt: note.updatedAt }]
+      ? [{ name: note.name, id: note.id, parentId: note.folderId, type: 'file', size: note.size, revision: note.revision, updatedAt: note.updatedAt }]
       : [];
   },
   async listDeleted(context) {

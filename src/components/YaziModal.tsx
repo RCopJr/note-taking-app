@@ -15,21 +15,21 @@ export interface YaziModalProps {
   tree: FileNode[];
   activeNoteId: string | null;
   onSelectNote: (noteId: string) => void;
-  onCreateNote: (parentPath?: string) => Promise<void>;
-  onCreateFolder: (parentPath?: string) => Promise<void>;
-  onDeletePath: (node: FileNode) => Promise<void>;
-  onRenamePath: (node: FileNode, newName: string) => Promise<void>;
-  onMovePath: (node: FileNode, parentId: string | null) => Promise<void>;
+  onCreateNote: (parentId?: string) => Promise<void>;
+  onCreateFolder: (parentId?: string) => Promise<void>;
+  onDeleteNode: (node: FileNode) => Promise<void>;
+  onRenameNode: (node: FileNode, newName: string) => Promise<void>;
+  onMoveNode: (node: FileNode, parentId: string | null) => Promise<void>;
   onOpenTrash: () => void;
   onClose: () => void;
 }
 
 // Tree nodes retain stable UUID identity; hierarchy comes from parentId.
-function findNodeByPath(nodes: FileNode[], targetId: string): FileNode | null {
+function findNodeById(nodes: FileNode[], targetId: string): FileNode | null {
   for (const node of nodes) {
-    if (node.path === targetId) return node;
+    if (node.id === targetId) return node;
     if (node.children) {
-      const found = findNodeByPath(node.children, targetId);
+      const found = findNodeById(node.children, targetId);
       if (found) return found;
     }
   }
@@ -45,7 +45,7 @@ function listFolderChoices(nodes: FileNode[], prefix = ''): FolderChoice[] {
   return nodes.flatMap((node) => {
     if (node.type !== 'directory') return [];
     const label = prefix ? `${prefix}/${node.name}` : node.name;
-    return [{ id: node.path, label }, ...listFolderChoices(node.children ?? [], label)];
+    return [{ id: node.id, label }, ...listFolderChoices(node.children ?? [], label)];
   });
 }
 
@@ -56,13 +56,13 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   onSelectNote,
   onCreateNote,
   onCreateFolder,
-  onDeletePath,
-  onRenamePath,
-  onMovePath,
+  onDeleteNode,
+  onRenameNode,
+  onMoveNode,
   onOpenTrash,
   onClose,
 }) => {
-  const [currentPath, setCurrentPath] = useState<string>('');
+  const [currentFolderId, setCurrentFolderId] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [itemToDelete, setItemToDelete] = useState<FileNode | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
@@ -87,38 +87,38 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (activeNoteId) {
-        setCurrentPath(findNodeByPath(tree, activeNoteId)?.parentId ?? '');
+        setCurrentFolderId(findNodeById(tree, activeNoteId)?.parentId ?? '');
       } else {
-        setCurrentPath('');
+        setCurrentFolderId('');
       }
     }
   }, [isOpen, activeNoteId]);
 
   // Current directory nodes
   const currentItems = useMemo<FileNode[]>(() => {
-    if (!currentPath) {
+    if (!currentFolderId) {
       return tree;
     }
-    const node = findNodeByPath(tree, currentPath);
+    const node = findNodeById(tree, currentFolderId);
     return node?.children || [];
-  }, [tree, currentPath]);
+  }, [tree, currentFolderId]);
 
   // Parent directory nodes (for column 1 preview)
   const parentItems = useMemo<FileNode[]>(() => {
-    if (!currentPath) {
+    if (!currentFolderId) {
       return [];
     }
-    const parentId = findNodeByPath(tree, currentPath)?.parentId ?? null;
+    const parentId = findNodeById(tree, currentFolderId)?.parentId ?? null;
     if (!parentId) {
       return tree;
     }
-    return findNodeByPath(tree, parentId)?.children || [];
-  }, [tree, currentPath]);
+    return findNodeById(tree, parentId)?.children || [];
+  }, [tree, currentFolderId]);
 
   const folderChoices = useMemo(() => listFolderChoices(tree), [tree]);
-  const currentFolder = currentPath ? findNodeByPath(tree, currentPath) : null;
-  const currentDisplayPath = currentPath
-    ? folderChoices.find((folder) => folder.id === currentPath)?.label ?? currentFolder?.name ?? ''
+  const currentFolder = currentFolderId ? findNodeById(tree, currentFolderId) : null;
+  const currentDisplayPath = currentFolderId
+    ? folderChoices.find((folder) => folder.id === currentFolderId)?.label ?? currentFolder?.name ?? ''
     : 'Notes';
 
   // Selected item
@@ -129,7 +129,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     if (currentItems.length > 0) {
       // If the active note is in this folder, select it by default
       if (activeNoteId) {
-        const foundIdx = currentItems.findIndex((item) => item.path === activeNoteId);
+        const foundIdx = currentItems.findIndex((item) => item.id === activeNoteId);
         if (foundIdx >= 0) {
           setSelectedIndex(foundIdx);
           return;
@@ -139,7 +139,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     } else {
       setSelectedIndex(0);
     }
-  }, [currentPath, currentItems, activeNoteId]);
+  }, [currentFolderId, currentItems, activeNoteId]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -159,7 +159,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
 
     if (selectedItem.type === 'file') {
       setPreviewLoading(true);
-      fetchNote(selectedItem.path)
+      fetchNote(selectedItem.id)
         .then((doc) => {
           setPreviewContent(doc.content);
         })
@@ -188,19 +188,19 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     if (!selectedItem) return;
 
     if (selectedItem.type === 'directory') {
-      setCurrentPath(selectedItem.path);
+      setCurrentFolderId(selectedItem.id);
       setSelectedIndex(0);
     } else {
-      onSelectNote(selectedItem.path);
+      onSelectNote(selectedItem.id);
       onClose();
     }
   }, [selectedItem, onSelectNote, onClose]);
 
   const handleAscend = useCallback(() => {
-    if (!currentPath) return;
-    setCurrentPath(findNodeByPath(tree, currentPath)?.parentId ?? '');
+    if (!currentFolderId) return;
+    setCurrentFolderId(findNodeById(tree, currentFolderId)?.parentId ?? '');
     setSelectedIndex(0);
-  }, [currentPath, tree]);
+  }, [currentFolderId, tree]);
 
   // Keyboard navigation listener (Yazi style)
   useEffect(() => {
@@ -213,7 +213,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           e.preventDefault();
           const node = itemToDelete;
           setItemToDelete(null);
-          onDeletePath(node).catch(() => {});
+          onDeleteNode(node).catch(() => {});
         } else if (e.key === 'Escape' || e.key === 'q' || e.key === 'n') {
           e.preventDefault();
           setItemToDelete(null);
@@ -243,10 +243,10 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         handleAscend();
       } else if (e.key === 'a') {
         e.preventDefault();
-        onCreateNote(currentPath || undefined).catch(() => {});
+        onCreateNote(currentFolderId || undefined).catch(() => {});
       } else if (e.key === 'A') {
         e.preventDefault();
-        onCreateFolder(currentPath || undefined).catch(() => {});
+        onCreateFolder(currentFolderId || undefined).catch(() => {});
       } else if (e.key === 't') {
         e.preventDefault();
         onOpenTrash();
@@ -260,7 +260,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           e.preventDefault();
           const newName = prompt(`Rename "${selectedItem.name}" to:`, selectedItem.name);
           if (newName && newName.trim() && newName.trim() !== selectedItem.name) {
-            onRenamePath(selectedItem, newName.trim()).catch(() => {});
+            onRenameNode(selectedItem, newName.trim()).catch(() => {});
           }
         }
       } else if (e.key === 'm') {
@@ -280,7 +280,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
             alert('Folder path not found.');
             return;
           }
-          onMovePath(selectedItem, parentId).catch(() => {});
+          onMoveNode(selectedItem, parentId).catch(() => {});
         }
       }
     };
@@ -289,7 +289,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     isOpen,
-    currentPath,
+    currentFolderId,
     selectedItem,
     itemToDelete,
     handleMoveDown,
@@ -298,9 +298,9 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     handleAscend,
     onCreateNote,
     onCreateFolder,
-    onDeletePath,
-    onRenamePath,
-    onMovePath,
+    onDeleteNode,
+    onRenameNode,
+    onMoveNode,
     folderChoices,
     onOpenTrash,
     onClose,
@@ -310,13 +310,13 @@ export const YaziModal: React.FC<YaziModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 sm:p-6 font-sans text-sm text-editor-text select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-0 font-sans text-sm text-editor-text select-none sm:p-6"
       onClick={onClose}
     >
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="w-full max-w-5xl h-[78vh] max-h-[calc(100dvh-2rem)] bg-editor-bg border border-editor-border rounded-lg shadow-lg overflow-hidden flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted relative"
+        className="relative flex h-full max-h-[100dvh] w-full flex-col overflow-hidden border border-editor-border bg-editor-bg shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted sm:h-[78vh] sm:max-h-[calc(100dvh-2rem)] sm:max-w-5xl sm:rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Breadcrumbs Bar */}
@@ -355,24 +355,24 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         </div>
 
         {/* 3-Column Miller Columns Body */}
-        <div className="flex-1 min-h-0 flex overflow-x-auto divide-x divide-editor-border">
+        <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-editor-border">
           {/* Column 1: Parent Directory Preview (22% width) */}
-          <div className="w-[22%] min-w-36 shrink-0 bg-editor-sidebar overflow-y-auto p-2 text-sm divide-y divide-transparent">
+          <div className="hidden w-[22%] min-w-36 shrink-0 bg-editor-sidebar overflow-y-auto p-2 text-sm divide-y divide-transparent sm:block">
             <div className="text-xs uppercase text-editor-muted font-semibold px-2 py-1 mb-1 tracking-wider">
               Parent Directory
             </div>
             {parentItems.length > 0 ? (
               parentItems.map((item) => (
                 <div
-                  key={item.path}
+                  key={item.id}
                   onClick={() => {
                     if (item.type === 'directory') {
-                      setCurrentPath(item.path);
+                      setCurrentFolderId(item.id);
                       setSelectedIndex(0);
                     }
                   }}
                   className={`flex items-center space-x-2 px-2 py-1 rounded truncate text-sm transition-colors ${
-                    item.path === currentPath ? 'bg-editor-active text-editor-text font-semibold' : 'text-editor-muted hover:bg-editor-active hover:text-editor-text'
+                    item.id === currentFolderId ? 'bg-editor-active text-editor-text font-semibold' : 'text-editor-muted hover:bg-editor-active hover:text-editor-text'
                   }`}
                 >
                   {item.type === 'directory' ? (
@@ -393,7 +393,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           {/* Column 2: Current Directory Active Listing (38% width) */}
           <div
             ref={listRef}
-            className="w-[38%] min-w-52 shrink-0 bg-editor-bg overflow-y-auto p-2 text-sm space-y-0.5"
+            className="w-full min-w-0 shrink-0 bg-editor-bg overflow-y-auto p-2 text-sm space-y-0.5 sm:w-[46%] md:w-[38%]"
           >
             <div className="text-xs uppercase text-editor-muted font-semibold px-2 py-1 mb-1 tracking-wider flex items-center justify-between gap-2">
               <span className="truncate">{currentFolder?.name ?? 'Root'}</span>
@@ -403,19 +403,19 @@ export const YaziModal: React.FC<YaziModalProps> = ({
             {currentItems.length > 0 ? (
               currentItems.map((item, idx) => {
                 const isSelected = idx === selectedIndex;
-                const isCurrentActive = item.path === activeNoteId;
+                const isCurrentActive = item.id === activeNoteId;
 
                 return (
                   <div
-                    key={item.path}
+                    key={item.id}
                     data-index={idx}
                     onClick={() => {
                       setSelectedIndex(idx);
                       if (item.type === 'file') {
-                        onSelectNote(item.path);
+                        onSelectNote(item.id);
                         onClose();
                       } else {
-                        setCurrentPath(item.path);
+                        setCurrentFolderId(item.id);
                         setSelectedIndex(0);
                       }
                     }}
@@ -454,7 +454,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
           </div>
 
           {/* Column 3: Live Preview Pane (40% width) */}
-          <div className="flex-1 min-w-56 bg-editor-bg overflow-hidden flex flex-col">
+          <div className="hidden flex-1 min-w-0 bg-editor-bg overflow-hidden flex-col sm:flex">
             <div className="min-h-8 shrink-0 border-b border-editor-border px-3 py-1 flex items-center justify-between gap-2 text-sm bg-editor-sidebar">
               <span className="text-editor-muted truncate">
                 {selectedItem ? selectedItem.name : 'Preview'}
@@ -472,7 +472,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                   </div>
                   {selectedItem.children && selectedItem.children.length > 0 ? (
                     selectedItem.children.map((child) => (
-                      <div key={child.path} className="flex items-center space-x-2 text-editor-text py-0.5">
+                      <div key={child.id} className="flex items-center space-x-2 text-editor-text py-0.5">
                         {child.type === 'directory' ? (
                           <Folder size={14} className="text-editor-muted shrink-0" />
                         ) : (
@@ -552,7 +552,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
                   onClick={async () => {
                     const node = itemToDelete;
                     setItemToDelete(null);
-                    await onDeletePath(node);
+                    await onDeleteNode(node);
                   }}
                   className="px-3 py-1.5 rounded bg-editor-accent hover:bg-editor-text text-white font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted focus-visible:ring-offset-2"
                 >
