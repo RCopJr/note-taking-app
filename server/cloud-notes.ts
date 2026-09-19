@@ -16,7 +16,7 @@ import type {
 } from '../shared/contracts.ts';
 import { ApiError } from './http.ts';
 import { buildNoteSearchText, parseMarkdownMetadata } from './markdown.ts';
-import { createServerSupabaseClient } from './supabase.ts';
+import { createServerSupabaseClient, type ServerSupabaseConfig } from './supabase.ts';
 
 type FolderRow = Database['public']['Tables']['folders']['Row'];
 type NoteRow = Database['public']['Tables']['notes']['Row'];
@@ -100,7 +100,7 @@ function mapNote(
     folderId: row.folder_id,
     title: row.title,
     tags: row.tags,
-    size: row.size ?? Buffer.byteLength(row.content, 'utf8'),
+    size: row.size ?? new TextEncoder().encode(row.content).byteLength,
     revision: row.revision,
     updatedAt: Date.parse(row.updated_at),
     content: row.content,
@@ -108,8 +108,14 @@ function mapNote(
 }
 
 export class SupabaseCloudNoteStore implements CloudNoteStore {
+  private readonly config: ServerSupabaseConfig;
+
+  constructor(config: ServerSupabaseConfig) {
+    this.config = config;
+  }
+
   private async loadFolderPaths(context: CloudRequestContext): Promise<Map<string, string>> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken)
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken)
       .from('folders')
       .select('id, name, parent_id')
       .eq('owner_id', context.userId)
@@ -149,7 +155,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async listNotes(context: CloudRequestContext): Promise<NoteMetadata[]> {
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [notesResult, foldersResult] = await Promise.all([
       supabase
         .from('notes')
@@ -172,7 +178,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async listTree(context: CloudRequestContext): Promise<FileNode[]> {
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [foldersResult, notesResult] = await Promise.all([
       supabase
         .from('folders')
@@ -231,7 +237,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async listDeleted(context: CloudRequestContext): Promise<DeletedNode[]> {
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [foldersResult, notesResult] = await Promise.all([
       supabase
         .from('folders')
@@ -274,7 +280,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async getNote(context: CloudRequestContext, id: string): Promise<NoteDocument> {
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [noteResult, paths] = await Promise.all([
       supabase
         .from('notes')
@@ -292,7 +298,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
 
   async createNote(context: CloudRequestContext, input: CreateNoteRequest): Promise<NoteDocument> {
     const metadata = parseMarkdownMetadata(input.name, input.content);
-    const { data, error } = await createServerSupabaseClient(context.accessToken)
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken)
       .from('notes')
       .insert({
         owner_id: context.userId,
@@ -313,7 +319,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   async saveNote(context: CloudRequestContext, id: string, input: SaveNoteRequest): Promise<NoteDocument> {
     const current = await this.getNote(context, id);
     const metadata = parseMarkdownMetadata(current.name, input.content);
-    const { data, error } = await createServerSupabaseClient(context.accessToken).rpc('save_note', {
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken).rpc('save_note', {
       p_id: id,
       p_content: input.content,
       p_expected_revision: input.expectedRevision,
@@ -327,7 +333,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   async updateNote(context: CloudRequestContext, id: string, input: UpdateNoteMetadataRequest): Promise<NoteDocument> {
     const current = await this.getNote(context, id);
     const metadata = parseMarkdownMetadata(input.name, current.content);
-    const { data, error } = await createServerSupabaseClient(context.accessToken).rpc('update_note_metadata', {
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken).rpc('update_note_metadata', {
       p_id: id,
       p_name: input.name,
       // PostgreSQL accepts null here to move to root; generated RPC args omit parameter nullability.
@@ -339,7 +345,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async deleteNote(context: CloudRequestContext, id: string, input: RevisionMutationRequest): Promise<void> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken).rpc('set_note_deleted', {
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken).rpc('set_note_deleted', {
       p_id: id,
       p_expected_revision: input.expectedRevision,
       p_deleted: true,
@@ -348,7 +354,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async restoreNote(context: CloudRequestContext, id: string, input: RevisionMutationRequest): Promise<NoteDocument> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken).rpc('set_note_deleted', {
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken).rpc('set_note_deleted', {
       p_id: id,
       p_expected_revision: input.expectedRevision,
       p_deleted: false,
@@ -357,7 +363,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async createFolder(context: CloudRequestContext, input: CreateFolderRequest): Promise<FolderMetadata> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken)
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken)
       .from('folders')
       .insert({ owner_id: context.userId, name: input.name, parent_id: input.parentId })
       .select('id, parent_id, name, updated_at')
@@ -368,7 +374,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async updateFolder(context: CloudRequestContext, id: string, input: UpdateFolderRequest): Promise<FolderMetadata> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken)
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken)
       .from('folders')
       .update({ name: input.name, parent_id: input.parentId })
       .eq('owner_id', context.userId)
@@ -382,7 +388,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async deleteFolder(context: CloudRequestContext, id: string): Promise<void> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken).rpc('set_folder_deleted', {
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken).rpc('set_folder_deleted', {
       p_id: id,
       p_deleted: true,
     });
@@ -392,7 +398,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async restoreFolder(context: CloudRequestContext, id: string): Promise<void> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken).rpc('set_folder_deleted', {
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken).rpc('set_folder_deleted', {
       p_id: id,
       p_deleted: false,
     });
@@ -406,7 +412,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
 
   async searchNotes(context: CloudRequestContext, query: string, limit: number): Promise<FtsSearchResult[]> {
     if (!query.trim()) return [];
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [searchResult, paths] = await Promise.all([
       supabase.rpc('search_notes', { p_query: query, p_limit: limit }),
       this.loadFolderPaths(context),
@@ -426,7 +432,7 @@ export class SupabaseCloudNoteStore implements CloudNoteStore {
   }
 
   async listTags(context: CloudRequestContext): Promise<TagCount[]> {
-    const { data, error } = await createServerSupabaseClient(context.accessToken)
+    const { data, error } = await createServerSupabaseClient(this.config, context.accessToken)
       .from('notes')
       .select('tags')
       .eq('owner_id', context.userId)
