@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import {
   BiblePassageError,
@@ -26,6 +25,7 @@ import {
   parseJsonBody,
 } from './http.ts';
 import {
+  createVerifyAccessToken,
   requireAuthentication,
   type AuthVariables,
   type VerifyAccessToken,
@@ -38,43 +38,41 @@ import {
   SupabaseDataTransferStore,
   type DataTransferStore,
 } from './data-transfer.ts';
+import {
+  checkSupabaseConnection,
+  type RuntimeConfig,
+} from './runtime.ts';
 
-
-// Parse CLI flags
-function parseArgs(): { port: number } {
-  const args = process.argv.slice(2);
-  let port = 3001;
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--port' && args[i + 1]) {
-      port = parseInt(args[i + 1], 10) || 3001;
-      i++;
-    }
-  }
-
-  return { port };
-}
 
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
 interface CreateAppOptions {
+  runtimeConfig?: RuntimeConfig;
   verifyAccessToken?: VerifyAccessToken;
   noteStore?: CloudNoteStore;
   dataTransferStore?: DataTransferStore;
+  checkDatabase?: () => Promise<boolean>;
+  allowedOrigins?: string[];
 }
 
 export function createApp(options: CreateAppOptions = {}) {
-  const noteStore = options.noteStore ?? new SupabaseCloudNoteStore();
-  const dataTransferStore = options.dataTransferStore ?? new SupabaseDataTransferStore();
+  const config = options.runtimeConfig;
+  const noteStore = options.noteStore ?? new SupabaseCloudNoteStore(requireSupabaseConfig(config));
+  const dataTransferStore = options.dataTransferStore ?? new SupabaseDataTransferStore(requireSupabaseConfig(config));
+  const verifyAccessToken = options.verifyAccessToken ?? createVerifyAccessToken(requireSupabaseConfig(config));
+  const checkDatabase = options.checkDatabase
+    ?? (config ? () => checkSupabaseConnection(config.supabase) : async () => true);
+  const releaseSha = config?.releaseSha ?? 'development';
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  // Only the local Vite client may call the development API cross-origin.
-  app.use('*', cors({
-    origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
-    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Authorization', 'Content-Type'],
-  }));
+  if (options.allowedOrigins) {
+    app.use('*', cors({
+      origin: options.allowedOrigins,
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type'],
+    }));
+  }
 
   app.onError((error, c) => {
     if (error instanceof ApiError) {
@@ -84,7 +82,16 @@ export function createApp(options: CreateAppOptions = {}) {
     return errorResponse(c, new ApiError(500, 'INTERNAL_ERROR', 'The request could not be completed.'));
   });
 
-  app.use('/api/*', requireAuthentication('aal2', options.verifyAccessToken));
+  app.get('/api/health', async (c) => {
+    const databaseAvailable = await checkDatabase();
+    return c.json({
+      status: databaseAvailable ? 'ok' as const : 'degraded' as const,
+      releaseSha,
+      database: databaseAvailable ? 'available' as const : 'unavailable' as const,
+    }, databaseAvailable ? 200 : 503);
+  });
+
+  app.use('/api/*', requireAuthentication('aal2', verifyAccessToken));
 
   app.get('/api/session', (c) => {
     const identity = c.get('authIdentity');
@@ -100,7 +107,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
 // Bible passages
 app.get('/api/bible/status', (c) => {
-  return c.json(getBibleStatus());
+  return c.json(getBibleStatus(config?.esvApiKey));
 });
 
 app.get('/api/bible/passage', async (c) => {
@@ -109,7 +116,7 @@ app.get('/api/bible/passage', async (c) => {
     version: c.req.query('version'),
   });
   try {
-    return c.json(await fetchBiblePassage(query.reference, query.version));
+    return c.json(await fetchBiblePassage(query.reference, query.version, config?.esvApiKey));
   } catch (error) {
     if (error instanceof BiblePassageError) {
       const code = error.status === 400
@@ -284,30 +291,7 @@ app.notFound((c) => {
   return app;
 }
 
-const app = createApp();
-
-// ---------------------------------------------------------------------------
-// Server Bootstrap
-// ---------------------------------------------------------------------------
-
-async function main() {
-  const { port } = parseArgs();
-
-  console.log(`[Notes] Server running on http://127.0.0.1:${port}`);
-
-  serve({
-    fetch: app.fetch,
-    port,
-    hostname: '127.0.0.1',
-  });
+function requireSupabaseConfig(config: RuntimeConfig | undefined) {
+  if (!config) throw new Error('Runtime configuration is required when API dependencies are not injected.');
+  return config.supabase;
 }
-
-// Only start if run as main
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
-    console.error('Fatal server startup error:', err);
-    process.exit(1);
-  });
-}
-
-export { app };

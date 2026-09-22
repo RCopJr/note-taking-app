@@ -246,6 +246,14 @@ export const authSessionSchema = z.object({
 }).strict();
 
 export type AuthSession = z.infer<typeof authSessionSchema>;
+export const healthResponseSchema = z.object({
+  status: z.enum(['ok', 'degraded']),
+  releaseSha: z.string().min(1),
+  database: z.enum(['available', 'unavailable']),
+}).strict();
+
+export type HealthResponse = z.infer<typeof healthResponseSchema>;
+
 
 export const successResponseSchema = z.object({
   success: z.literal(true),

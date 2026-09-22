@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from './supabase.ts';
+import { createServerSupabaseClient, type ServerSupabaseConfig } from './supabase.ts';
 import { createMiddleware } from 'hono/factory';
 import { ApiError } from './http.ts';
 
@@ -19,13 +19,9 @@ export interface AuthVariables {
   accessToken: string;
 }
 
-let defaultVerifier: VerifyAccessToken | null = null;
-
-function getDefaultVerifier(): VerifyAccessToken {
-  if (defaultVerifier) return defaultVerifier;
-  const supabase = createServerSupabaseClient();
-
-  defaultVerifier = async (accessToken) => {
+export function createVerifyAccessToken(config: ServerSupabaseConfig): VerifyAccessToken {
+  const supabase = createServerSupabaseClient(config);
+  return async (accessToken) => {
     const { data, error } = await supabase.auth.getClaims(accessToken);
     if (error || !data || typeof data.claims.sub !== 'string') return null;
 
@@ -35,7 +31,6 @@ function getDefaultVerifier(): VerifyAccessToken {
       assuranceLevel: data.claims.aal === 'aal2' ? 'aal2' : 'aal1',
     };
   };
-  return defaultVerifier;
 }
 
 function readBearerToken(authorization: string | undefined): string | null {
@@ -46,7 +41,7 @@ function readBearerToken(authorization: string | undefined): string | null {
 
 export function requireAuthentication(
   minimumAssuranceLevel: AssuranceLevel,
-  verifyAccessToken: VerifyAccessToken = (token) => getDefaultVerifier()(token),
+  verifyAccessToken: VerifyAccessToken,
 ) {
   return createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
     if (c.req.method === 'OPTIONS') {

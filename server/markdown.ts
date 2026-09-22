@@ -1,4 +1,3 @@
-import path from 'node:path';
 import matter from 'gray-matter';
 
 export interface MarkdownMetadata {
@@ -32,7 +31,7 @@ export function parseMarkdownMetadata(name: string, content: string): MarkdownMe
     const heading = markdown.match(/^#\s+(.+)$/m)?.[1];
     if (heading) title = heading.trim();
   }
-  if (!title) title = path.basename(name).replace(/\.(md|txt)$/i, '');
+  if (!title) title = name.split('/').at(-1)!.replace(/\.(md|txt)$/i, '');
 
   return { title, tags };
 }

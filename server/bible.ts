@@ -30,9 +30,9 @@ export class BiblePassageError extends Error {
 const passageCache = new Map<string, CacheEntry>();
 let cachedVerseCount = 0;
 
-export function getBibleStatus(): BibleStatus {
+export function getBibleStatus(apiKey?: string): BibleStatus {
   return {
-    configured: Boolean(process.env.ESV_API_KEY?.trim()),
+    configured: Boolean(apiKey),
     supportedVersions: ['ESV'] as const,
   };
 }
@@ -84,9 +84,8 @@ function cachePassage(key: string, passage: BiblePassage, now: number): void {
 export async function fetchBiblePassage(
   reference: string,
   version: 'ESV',
+  apiKey?: string,
 ): Promise<BiblePassage> {
-
-  const apiKey = process.env.ESV_API_KEY?.trim();
   if (!apiKey) {
     throw new BiblePassageError(
       'ESV_API_KEY is not configured. Add it to the server environment and restart the app.',

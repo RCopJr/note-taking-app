@@ -9,3 +9,5 @@ dev
 .env
 .env.*
 !.env.example
+.dev.vars*
+.wrangler

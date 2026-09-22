@@ -8,7 +8,7 @@ import type {
 } from '../shared/contracts.ts';
 import { ApiError } from './http.ts';
 import { buildNoteSearchText, parseMarkdownMetadata } from './markdown.ts';
-import { createServerSupabaseClient } from './supabase.ts';
+import { createServerSupabaseClient, type ServerSupabaseConfig } from './supabase.ts';
 import type { CloudRequestContext } from './cloud-notes.ts';
 
 type FolderRow = Pick<Database['public']['Tables']['folders']['Row'], 'id' | 'name' | 'parent_id'>;
@@ -327,8 +327,14 @@ export function buildMarkdownArchive(folders: FolderRow[], notes: ExportNoteRow[
 }
 
 export class SupabaseDataTransferStore implements DataTransferStore {
+  private readonly config: ServerSupabaseConfig;
+
+  constructor(config: ServerSupabaseConfig) {
+    this.config = config;
+  }
+
   private async loadImportState(context: CloudRequestContext): Promise<ImportState> {
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [folders, notes, imports] = await Promise.all([
       supabase.from('folders').select('id, name, parent_id').eq('owner_id', context.userId).is('deleted_at', null),
       supabase.from('notes').select('id, folder_id, name, content').eq('owner_id', context.userId).is('deleted_at', null),
@@ -345,7 +351,7 @@ export class SupabaseDataTransferStore implements DataTransferStore {
     if (input.mode === 'dry-run') return reportFromPlans(plans, true);
 
     const completed: PlannedImport[] = [];
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     for (const plan of plans) {
       if (plan.status === 'failed' || (plan.status === 'skipped' && plan.targetPath === null)) {
         completed.push(plan);
@@ -382,7 +388,7 @@ export class SupabaseDataTransferStore implements DataTransferStore {
   }
 
   async exportMarkdown(context: CloudRequestContext): Promise<MarkdownArchive> {
-    const supabase = createServerSupabaseClient(context.accessToken);
+    const supabase = createServerSupabaseClient(this.config, context.accessToken);
     const [folders, notes] = await Promise.all([
       supabase.from('folders').select('id, name, parent_id').eq('owner_id', context.userId).is('deleted_at', null),
       supabase

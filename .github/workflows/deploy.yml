@@ -1,0 +1,85 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Migrate, deploy, and smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.deployment-url }}
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+    steps:
+      - name: Check out exact release
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run complete quality gate
+        run: npm run check
+
+      - name: Validate and build production artifact
+        run: npm run build:production
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          RELEASE_SHA: ${{ github.sha }}
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.117.0
+
+      - name: Link production database
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Preview production migrations
+        run: supabase db push --dry-run
+
+      - name: Apply production migrations
+        run: supabase db push
+
+      - name: Deploy exact release to Cloudflare
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            deploy
+            --var RELEASE_SHA:${{ github.sha }}
+            --var SUPABASE_URL:${{ vars.SUPABASE_URL }}
+            --var SUPABASE_ANON_KEY:${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Smoke production release
+        run: node --experimental-strip-types scripts/smoke-production.ts "$DEPLOYMENT_URL" "$GITHUB_SHA"
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
