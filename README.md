@@ -42,14 +42,12 @@ Do not enable Cloudflare Git integration; a second deployment owner could race d
 5. Add these environment secrets:
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
-   - `SUPABASE_ACCESS_TOKEN`
-   - `SUPABASE_PROJECT_REF`
-   - `SUPABASE_DB_PASSWORD`
+   - `SUPABASE_DB_URL` (the percent-encoded Session pooler connection URI)
    - `SUPABASE_ANON_KEY` (the publishable key despite the legacy name)
 6. Keep public registration disabled in Supabase.
 7. After the first deployment, optionally add `ESV_API_KEY` as an encrypted Worker secret in Cloudflare.
 
-The server and browser receive the same Supabase URL and publishable key from the GitHub `production` environment. Passwords, access tokens, database credentials, TOTP material, recovery codes, and service-role keys must never be committed or added to Vite-prefixed variables.
+The server and browser receive the same Supabase URL and publishable key from the GitHub `production` environment. Production migrations connect through the Session pooler URI without requiring a Supabase Management API token. Passwords, database credentials, TOTP material, recovery codes, and service-role keys must never be committed or added to Vite-prefixed variables.
 
 ### Recovery
 
