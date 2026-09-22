@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { setTimeout as delay } from 'node:timers/promises';
 import { healthResponseSchema } from '../shared/contracts.ts';
 
 const [baseUrlInput, expectedSha] = process.argv.slice(2);
@@ -16,7 +17,28 @@ async function requireOk(pathname: string): Promise<Response> {
   return response;
 }
 
-const root = await requireOk('/');
+async function waitForRelease(): Promise<Response> {
+  let lastStatus = 0;
+  let lastRelease: string | null = null;
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      const response = await fetch(new URL('/', baseUrl), {
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: AbortSignal.timeout(15_000),
+      });
+      lastStatus = response.status;
+      lastRelease = response.headers.get('X-Release-Sha');
+      if (response.ok && lastRelease === expectedSha) return response;
+      await response.body?.cancel();
+    } catch {
+      lastStatus = 0;
+    }
+    if (attempt < 12) await delay(5_000);
+  }
+  assert.fail(`Production did not serve release ${expectedSha}; last status ${lastStatus}, release ${lastRelease ?? 'missing'}.`);
+}
+
+const root = await waitForRelease();
 assert.match(root.headers.get('Content-Type') ?? '', /^text\/html\b/i);
 assert.equal(root.headers.get('X-Release-Sha'), expectedSha);
 assert.equal(root.headers.get('X-Content-Type-Options'), 'nosniff');
