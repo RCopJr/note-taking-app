@@ -250,9 +250,11 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       } else if (e.key === 't') {
         e.preventDefault();
         onOpenTrash();
-      } else if ((e.key === 'd' || e.key === 'Delete') && selectedItem) {
-        e.preventDefault();
-        setItemToDelete(selectedItem);
+      } else if (e.key === 'd') {
+        if (selectedItem) {
+          e.preventDefault();
+          setItemToDelete(selectedItem);
+        }
       } else if (e.key === 'r') {
         if (selectedItem) {
           e.preventDefault();
@@ -283,10 +285,8 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       }
     };
 
-    // Capture before CodeMirror's Vim keymap can consume keys if focus remains
-    // in the underlying editor while the explorer opens.
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     isOpen,
     currentFolderId,
@@ -512,7 +512,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">A</kbd> new folder</span>
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">r</kbd> rename</span>
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">m</kbd> move</span>
-              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">d / Delete</kbd> delete</span>
+              <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">d</kbd> delete</span>
               <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">t</kbd> trash</span>
             </div>
             <span><kbd className="font-mono bg-editor-bg border border-editor-border px-1.5 py-0.5 rounded text-editor-text">q / Esc</kbd> close</span>
