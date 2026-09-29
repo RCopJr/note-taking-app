@@ -205,19 +205,15 @@ export const YaziModal: React.FC<YaziModalProps> = ({
     if (!isOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      const consume = () => {
-        e.preventDefault();
-        e.stopPropagation();
-      };
       // Handle in-app delete confirmation keys
       if (itemToDelete) {
         if (e.key === 'Enter' || e.key === 'y') {
-          consume();
+          e.preventDefault();
           const node = itemToDelete;
           setItemToDelete(null);
           onDeleteNode(node).catch(() => {});
         } else if (e.key === 'Escape' || e.key === 'q' || e.key === 'n') {
-          consume();
+          e.preventDefault();
           setItemToDelete(null);
         }
         return;
@@ -229,35 +225,35 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       }
 
       if (e.key === 'Escape' || e.key === 'q') {
-        consume();
+        e.preventDefault();
         onClose();
       } else if (e.key === 'j' || e.key === 'ArrowDown') {
-        consume();
+        e.preventDefault();
         handleMoveDown();
       } else if (e.key === 'k' || e.key === 'ArrowUp') {
-        consume();
+        e.preventDefault();
         handleMoveUp();
       } else if (e.key === 'l' || e.key === 'ArrowRight' || e.key === 'Enter') {
-        consume();
+        e.preventDefault();
         handleEnterOrDescend();
       } else if (e.key === 'h' || e.key === 'ArrowLeft' || e.key === '-') {
-        consume();
+        e.preventDefault();
         handleAscend();
       } else if (e.key === 'a') {
-        consume();
+        e.preventDefault();
         onCreateNote(currentFolderId || undefined).catch(() => {});
       } else if (e.key === 'A') {
-        consume();
+        e.preventDefault();
         onCreateFolder(currentFolderId || undefined).catch(() => {});
       } else if (e.key === 't') {
-        consume();
+        e.preventDefault();
         onOpenTrash();
       } else if ((e.key === 'd' || e.key === 'Delete') && selectedItem) {
-        consume();
+        e.preventDefault();
         setItemToDelete(selectedItem);
       } else if (e.key === 'r') {
         if (selectedItem) {
-          consume();
+          e.preventDefault();
           const newName = prompt(`Rename "${selectedItem.name}" to:`, selectedItem.name);
           if (newName && newName.trim() && newName.trim() !== selectedItem.name) {
             onRenameNode(selectedItem, newName.trim()).catch(() => {});
@@ -265,7 +261,7 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         }
       } else if (e.key === 'm') {
         if (selectedItem) {
-          consume();
+          e.preventDefault();
           const destination = prompt(
             `Move "${selectedItem.name}" to folder path (use / for root):\n\n${
               folderChoices.map((folder) => folder.label).join('\n')
