@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { configureAccessTokenProvider, fetchSession } from '../api.ts';
-import { supabase } from './supabase.ts';
+import { localMfaDisabled, supabase } from './supabase.ts';
 
 type AuthStage = 'loading' | 'sign-in' | 'enroll' | 'challenge' | 'ready' | 'error';
 
@@ -14,7 +14,10 @@ interface Enrollment {
 }
 
 interface AuthGateProps {
-  children: (onDirtyChange: (dirty: boolean) => void) => ReactNode;
+  children: (
+    onDirtyChange: (dirty: boolean) => void,
+    onSignOut: () => Promise<void>,
+  ) => ReactNode;
 }
 
 export function AuthGate({ children }: AuthGateProps) {
@@ -32,6 +35,23 @@ export function AuthGate({ children }: AuthGateProps) {
   const evaluateSession = useCallback(async () => {
     const id = ++evaluationId.current;
     setError(null);
+    if (localMfaDisabled) {
+      try {
+        await fetchSession();
+      } catch (sessionError) {
+        if (id !== evaluationId.current) return;
+        setError(sessionError instanceof Error ? sessionError.message : 'The API rejected this session.');
+        setStage('error');
+        return;
+      }
+      if (id !== evaluationId.current) return;
+      setFactorId(null);
+      setEnrollment(null);
+      setStage('ready');
+      setHasEnteredApp(true);
+      return;
+    }
+
 
     const [{ data: factors, error: factorsError }, { data: assurance, error: assuranceError }] = await Promise.all([
       supabase.auth.mfa.listFactors(),
@@ -240,18 +260,8 @@ export function AuthGate({ children }: AuthGateProps) {
     <div className="relative h-screen w-screen">
       {hasEnteredApp && (
         <div aria-hidden={blocked} inert={blocked ? true : undefined} className={blocked ? 'pointer-events-none h-full' : 'h-full'}>
-          {children(setDirty)}
+          {children(setDirty, signOut)}
         </div>
-      )}
-
-      {stage === 'ready' && (
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="fixed right-4 top-4 z-40 rounded border border-[#d0d7de] bg-white px-3 py-1.5 font-mono text-xs text-[#24292e] shadow-sm hover:bg-[#f6f8fa]"
-        >
-          Sign out
-        </button>
       )}
 
       {blocked && (
@@ -263,7 +273,11 @@ export function AuthGate({ children }: AuthGateProps) {
           <div className="w-full max-w-sm rounded-lg border border-[#d0d7de] bg-white p-6 shadow-lg">
             <h1 className="mb-1 text-xl font-semibold text-[#24292e]">Notes</h1>
             <p className="mb-5 text-sm text-[#57606a]">
-              {hasEnteredApp ? 'Your editor is preserved. Authenticate again to continue.' : 'Sign in with multi-factor authentication to continue.'}
+              {hasEnteredApp
+                ? 'Your editor is preserved. Authenticate again to continue.'
+                : localMfaDisabled
+                  ? 'Sign in to continue.'
+                  : 'Sign in with multi-factor authentication to continue.'}
             </p>
 
             {stage === 'loading' && <p className="font-mono text-sm">Restoring session…</p>}

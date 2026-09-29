@@ -16,9 +16,15 @@ const runtimeConfig = parseRuntimeConfig({
   RELEASE_SHA: process.env.RELEASE_SHA ?? 'development',
   ESV_API_KEY: process.env.ESV_API_KEY || undefined,
 });
+const localMfaDisabled = process.env.LOCAL_DISABLE_MFA === 'true';
+const supabaseHostname = new URL(runtimeConfig.supabase.url).hostname;
+if (localMfaDisabled && !['127.0.0.1', 'localhost', '::1'].includes(supabaseHostname)) {
+  throw new Error('LOCAL_DISABLE_MFA is allowed only with a loopback Supabase URL.');
+}
 const app = createApp({
   runtimeConfig,
   allowedOrigins: ['http://127.0.0.1:5173', 'http://localhost:5173'],
+  minimumAssuranceLevel: localMfaDisabled ? 'aal1' : 'aal2',
 });
 
 console.log(`[Notes] Server running on http://127.0.0.1:${port}`);

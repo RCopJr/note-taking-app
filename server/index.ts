@@ -28,6 +28,7 @@ import {
   createVerifyAccessToken,
   requireAuthentication,
   type AuthVariables,
+  type AssuranceLevel,
   type VerifyAccessToken,
 } from './auth.ts';
 import {
@@ -54,6 +55,7 @@ interface CreateAppOptions {
   dataTransferStore?: DataTransferStore;
   checkDatabase?: () => Promise<boolean>;
   allowedOrigins?: string[];
+  minimumAssuranceLevel?: AssuranceLevel;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -64,6 +66,7 @@ export function createApp(options: CreateAppOptions = {}) {
   const checkDatabase = options.checkDatabase
     ?? (config ? () => checkSupabaseConnection(config.supabase) : async () => true);
   const releaseSha = config?.releaseSha ?? 'development';
+  const minimumAssuranceLevel = options.minimumAssuranceLevel ?? 'aal2';
   const app = new Hono<{ Variables: AuthVariables }>();
 
   if (options.allowedOrigins) {
@@ -91,14 +94,14 @@ export function createApp(options: CreateAppOptions = {}) {
     }, databaseAvailable ? 200 : 503);
   });
 
-  app.use('/api/*', requireAuthentication('aal2', verifyAccessToken));
+  app.use('/api/*', requireAuthentication(minimumAssuranceLevel, verifyAccessToken));
 
   app.get('/api/session', (c) => {
     const identity = c.get('authIdentity');
     const session: AuthSession = {
       userId: identity.userId,
       ...(identity.email ? { email: identity.email } : {}),
-      assuranceLevel: 'aal2',
+      assuranceLevel: identity.assuranceLevel,
     };
     return c.json(session);
   });

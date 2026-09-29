@@ -4,14 +4,24 @@ Private Markdown notebook backed by Supabase. React/Vite serves the browser UI; 
 
 ## Local development
 
-Use Node 22 and copy `.env.example` to `.env` with local Supabase values.
+Use Node 22 and install Colima:
 
 ```sh
 npm ci
-npm run dev:all
+npm run dev:up
 ```
 
-Vite runs at `http://127.0.0.1:5173` and proxies `/api/*` to the Node/Hono server at `http://127.0.0.1:3001`.
+`dev:up` starts the dedicated Colima `supabase` profile, local Supabase, the Node/Hono API, and Vite. It updates the ignored `.env` file with local Supabase values, waits for every service to become healthy, and then returns. Open `http://127.0.0.1:5173`.
+
+Sign in locally with `test@gmail.com` and password `12345`. `dev:up` provisions this account and disables MFA only while both the browser and API use loopback Supabase URLs. Production continues to require MFA; either local bypass flag fails closed against a non-loopback Supabase URL.
+
+```sh
+npm run dev:status
+npm run dev:logs
+npm run dev:down
+```
+
+`dev:down` stops the application and Colima while preserving local Supabase data. Use `npm run dev:all` only when Supabase is already running and you want the API and Vite attached to the current terminal.
 
 `npm run preview:cloudflare` builds the UI and runs the combined static/API artifact with Wrangler at `http://127.0.0.1:8787`. Wrangler reads ignored `.dev.vars` or `.env` bindings.
 

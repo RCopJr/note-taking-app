@@ -40,6 +40,7 @@ import { FileText } from 'lucide-react';
 
 interface AppProps {
   onDirtyChange?: (dirty: boolean) => void;
+  onSignOut: () => Promise<void>;
 }
 
 function containsNode(node: FileNode, id: string): boolean {
@@ -72,7 +73,7 @@ function describeInitialLoadError(error: unknown): string {
   return error instanceof Error ? error.message : 'The notes workspace could not be loaded.';
 }
 
-export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
+export const App: React.FC<AppProps> = ({ onDirtyChange, onSignOut }) => {
   const [config, setConfig] = useState<AppConfig>(() => loadPreferences());
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [tree, setTree] = useState<FileNode[]>([]);
@@ -569,6 +570,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange }) => {
         bibleStatus={bibleStatus}
         onSave={handleSaveConfig}
         onOpenDataPortability={() => void handleOpenDataPortability()}
+        onSignOut={onSignOut}
         onClose={handleCloseModals}
       />
 

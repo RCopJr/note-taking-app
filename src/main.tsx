@@ -9,7 +9,9 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <AuthGate>
-        {(onDirtyChange) => <App onDirtyChange={onDirtyChange} />}
+        {(onDirtyChange, onSignOut) => (
+          <App onDirtyChange={onDirtyChange} onSignOut={onSignOut} />
+        )}
       </AuthGate>
     </React.StrictMode>
   );

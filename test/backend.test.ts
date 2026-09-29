@@ -177,6 +177,29 @@ test('cloud note API enforces MFA and non-disclosing ownership', async () => {
   });
 });
 
+test('local development can explicitly accept password-only sessions', async () => {
+  const localApp = createApp({
+    noteStore,
+    dataTransferStore,
+    minimumAssuranceLevel: 'aal1',
+    verifyAccessToken: async (accessToken) => (
+      accessToken === 'alice-aal1'
+        ? { userId: ALICE_ID, email: 'test@gmail.com', assuranceLevel: 'aal1' }
+        : null
+    ),
+  });
+  const headers = { Authorization: 'Bearer alice-aal1' };
+
+  const session = await localApp.request('/api/session', { headers });
+  assert.equal(session.status, 200);
+  assert.deepEqual(await session.json(), {
+    userId: ALICE_ID,
+    email: 'test@gmail.com',
+    assuranceLevel: 'aal1',
+  });
+  assert.equal((await localApp.request('/api/notes', { headers })).status, 200);
+});
+
 test('cloud note API validates UUIDs and revision-aware saves', async () => {
   const invalidId = await request('/api/notes/not-a-uuid');
   assert.equal(invalidId.status, 400);

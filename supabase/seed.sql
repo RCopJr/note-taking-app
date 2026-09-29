@@ -36,6 +36,39 @@ values
     now()
   );
 
+update auth.users
+set
+  email = 'test@gmail.com',
+  encrypted_password = extensions.crypt('12345', extensions.gen_salt('bf')),
+  raw_user_meta_data = '{"display_name":"Local Test User"}'::jsonb,
+  confirmation_token = '',
+  recovery_token = '',
+  email_change_token_new = '',
+  email_change = '',
+  updated_at = now()
+where id = '11111111-1111-4111-8111-111111111111';
+
+insert into auth.identities (
+  id,
+  provider_id,
+  user_id,
+  identity_data,
+  provider,
+  last_sign_in_at,
+  created_at,
+  updated_at
+)
+values (
+  '11111111-1111-4111-8111-111111111111',
+  '11111111-1111-4111-8111-111111111111',
+  '11111111-1111-4111-8111-111111111111',
+  '{"sub":"11111111-1111-4111-8111-111111111111","email":"test@gmail.com","email_verified":true,"phone_verified":false}'::jsonb,
+  'email',
+  now(),
+  now(),
+  now()
+);
+
 insert into public.folders (id, owner_id, name)
 values
   (
@@ -56,7 +89,7 @@ values
     '11111111-1111-4111-8111-111111111111',
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
     'welcome.md',
-    E'# Welcome\n\nThis is Alice’s local development note.\n'
+    E'# Welcome\n\nThis is the local test account’s development note.\n'
   ),
   (
     'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',
