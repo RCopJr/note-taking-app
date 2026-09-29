@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Folder,
   FileText,
@@ -73,14 +73,12 @@ export const YaziModal: React.FC<YaziModalProps> = ({
   const listRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Focus modal container on open so keyboard navigation works immediately
-  useEffect(() => {
-    if (isOpen) {
-      setShowHelp(false);
-      setTimeout(() => {
-        modalRef.current?.focus();
-      }, 50);
-    }
+  // Take keyboard ownership before the explorer is painted. Delayed focus leaves
+  // a window where CodeMirror can consume the first navigation key.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    setShowHelp(false);
+    modalRef.current?.focus({ preventScroll: true });
   }, [isOpen]);
 
   // Initialize directory based on active note on open

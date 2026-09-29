@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import {
   ApiClientError,
   fetchNotes,
@@ -96,6 +97,10 @@ export const App: React.FC<AppProps> = ({ onDirtyChange, onSignOut }) => {
   const [isTrashOpen, setIsTrashOpen] = useState<boolean>(false);
   const [isDataPortabilityOpen, setIsDataPortabilityOpen] = useState<boolean>(false);
   const leaderHint = config?.leaderKey || '<Space>';
+  const openExplorer = useCallback(() => {
+    flushSync(() => setIsExplorerOpen(true));
+  }, []);
+
 
 
   // Load all app data from backend
@@ -192,7 +197,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange, onSignOut }) => {
         if (event.key === '-' || event.key === 'e') {
           event.preventDefault();
           resetCommand();
-          setIsExplorerOpen(true);
+          openExplorer();
         } else if (event.key === 'f') {
           event.preventDefault();
           commandPrefix = 'find';
@@ -216,7 +221,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange, onSignOut }) => {
       resetCommand();
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [activeNote, config?.leaderKey]);
+  }, [activeNote, config?.leaderKey, openExplorer]);
 
   // Global keyboard listeners and shortcuts
   useEffect(() => {
@@ -230,9 +235,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange, onSignOut }) => {
       setIsTelescopeOpen(true);
     };
 
-    const onOpenExplorer = () => {
-      setIsExplorerOpen(true);
-    };
+    const onOpenExplorer = openExplorer;
 
     const onExport = () => setIsExportOpen(true);
     const onCheatsheet = () => setIsCheatsheetOpen(true);
@@ -271,7 +274,7 @@ export const App: React.FC<AppProps> = ({ onDirtyChange, onSignOut }) => {
       window.removeEventListener('notes:open-settings', onOpenSettings);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, []);
+  }, [openExplorer]);
 
   const handleCloseModals = () => {
     setIsTelescopeOpen(false);
