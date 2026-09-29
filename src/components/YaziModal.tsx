@@ -71,17 +71,14 @@ export const YaziModal: React.FC<YaziModalProps> = ({
 
 
   const listRef = useRef<HTMLDivElement>(null);
-  const keyboardSinkRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  // An editable focus target prevents Vim-style browser extensions from
-  // claiming h/j/k/l/d. Focus once during commit and again after the Vim
-  // command finishes, because CodeMirror restores its own focus on return.
+  // Take keyboard ownership before the explorer is painted. Delayed focus leaves
+  // a window where CodeMirror can consume the first navigation key.
   useLayoutEffect(() => {
     if (!isOpen) return;
     setShowHelp(false);
-    const focusKeyboardSink = () => keyboardSinkRef.current?.focus({ preventScroll: true });
-    focusKeyboardSink();
-    queueMicrotask(focusKeyboardSink);
+    modalRef.current?.focus({ preventScroll: true });
   }, [isOpen]);
 
   // Initialize directory based on active note on open
@@ -212,10 +209,6 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         e.preventDefault();
         e.stopPropagation();
       };
-      const key = !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey
-        && ['KeyH', 'KeyJ', 'KeyK', 'KeyL', 'KeyD'].includes(e.code)
-        ? e.code.slice(3).toLowerCase()
-        : e.key;
       // Handle in-app delete confirmation keys
       if (itemToDelete) {
         if (e.key === 'Enter' || e.key === 'y') {
@@ -230,40 +223,36 @@ export const YaziModal: React.FC<YaziModalProps> = ({
         return;
       }
 
-      // Text fields opened by future explorer actions retain normal typing.
-      // The dedicated keyboard sink is intentionally handled here.
-      if (
-        e.target !== keyboardSinkRef.current
-        && (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
-      ) {
+      // Ignore if an input or dialog is active
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
-      if (key === 'Escape' || key === 'q') {
+      if (e.key === 'Escape' || e.key === 'q') {
         consume();
         onClose();
-      } else if (key === 'j' || key === 'ArrowDown') {
+      } else if (e.key === 'j' || e.key === 'ArrowDown') {
         consume();
         handleMoveDown();
-      } else if (key === 'k' || key === 'ArrowUp') {
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
         consume();
         handleMoveUp();
-      } else if (key === 'l' || key === 'ArrowRight' || key === 'Enter') {
+      } else if (e.key === 'l' || e.key === 'ArrowRight' || e.key === 'Enter') {
         consume();
         handleEnterOrDescend();
-      } else if (key === 'h' || key === 'ArrowLeft' || key === '-') {
+      } else if (e.key === 'h' || e.key === 'ArrowLeft' || e.key === '-') {
         consume();
         handleAscend();
-      } else if (key === 'a') {
+      } else if (e.key === 'a') {
         consume();
         onCreateNote(currentFolderId || undefined).catch(() => {});
-      } else if (key === 'A') {
+      } else if (e.key === 'A') {
         consume();
         onCreateFolder(currentFolderId || undefined).catch(() => {});
-      } else if (key === 't') {
+      } else if (e.key === 't') {
         consume();
         onOpenTrash();
-      } else if ((key === 'd' || key === 'Delete') && selectedItem) {
+      } else if ((e.key === 'd' || e.key === 'Delete') && selectedItem) {
         consume();
         setItemToDelete(selectedItem);
       } else if (e.key === 'r') {
@@ -327,20 +316,11 @@ export const YaziModal: React.FC<YaziModalProps> = ({
       onClick={onClose}
     >
       <div
+        ref={modalRef}
         tabIndex={-1}
         className="relative flex h-full max-h-[100dvh] w-full flex-col overflow-hidden border border-editor-border bg-editor-bg shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-editor-muted sm:h-[78vh] sm:max-h-[calc(100dvh-2rem)] sm:max-w-5xl sm:rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <input
-          ref={keyboardSinkRef}
-          type="text"
-          value=""
-          onChange={() => {}}
-          aria-label="File explorer keyboard controls"
-          autoComplete="off"
-          spellCheck={false}
-          className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
-        />
         {/* Header Breadcrumbs Bar */}
         <div className="min-h-10 shrink-0 bg-editor-sidebar border-b border-editor-border px-4 py-2 flex items-center justify-between gap-3 text-sm">
           <div className="flex min-w-0 items-center space-x-2 truncate">
