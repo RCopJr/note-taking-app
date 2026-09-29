@@ -12,6 +12,12 @@ const config = browserAuthConfigSchema.parse({
   anonKey: env.VITE_SUPABASE_ANON_KEY,
 });
 
+export const localMfaDisabled = env.VITE_LOCAL_DISABLE_MFA === 'true';
+const supabaseHostname = new URL(config.url).hostname;
+if (localMfaDisabled && !['127.0.0.1', 'localhost', '::1'].includes(supabaseHostname)) {
+  throw new Error('VITE_LOCAL_DISABLE_MFA is allowed only with a loopback Supabase URL.');
+}
+
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
     autoRefreshToken: true,

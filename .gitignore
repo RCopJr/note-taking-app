@@ -11,3 +11,4 @@ dev
 !.env.example
 .dev.vars*
 .wrangler
+.dev-stack

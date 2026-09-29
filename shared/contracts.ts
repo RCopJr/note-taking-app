@@ -242,7 +242,7 @@ export const biblePassageQuerySchema = z.object({
 export const authSessionSchema = z.object({
   userId: z.uuid(),
   email: z.email().optional(),
-  assuranceLevel: z.literal('aal2'),
+  assuranceLevel: z.enum(['aal1', 'aal2']),
 }).strict();
 
 export type AuthSession = z.infer<typeof authSessionSchema>;

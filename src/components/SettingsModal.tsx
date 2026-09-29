@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders, BookOpen, Archive } from 'lucide-react';
+import { Settings, Save, Plus, Trash2, X, Folder, Keyboard, Sliders, BookOpen, Archive, LogOut } from 'lucide-react';
 import type {
   AppConfig,
   BibleStatus,
@@ -13,6 +13,7 @@ export interface SettingsModalProps {
   bibleStatus: BibleStatus | null;
   onSave: (updates: UpdateAppConfig) => Promise<void>;
   onOpenDataPortability: () => void;
+  onSignOut: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -22,6 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   bibleStatus,
   onSave,
   onOpenDataPortability,
+  onSignOut,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'editor' | 'bible' | 'keymaps'>('general');
@@ -222,6 +224,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 >
                   <Archive size={14} />
                   <span>Open import and export</span>
+                </button>
+              </div>
+
+              <div className="space-y-2 border-t border-editor-border pt-4">
+                <span className="block font-semibold text-editor-text">Account</span>
+                <p className="text-sm text-editor-muted">
+                  End this session and return to the sign-in screen.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void onSignOut()}
+                  className="flex items-center gap-2 rounded border border-editor-border bg-editor-bg px-3 py-2 font-medium text-editor-text hover:bg-editor-active"
+                >
+                  <LogOut size={14} />
+                  <span>Sign out</span>
                 </button>
               </div>
             </div>
